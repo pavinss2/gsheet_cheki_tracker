@@ -65,8 +65,8 @@ function getSheetRows(ss, sheetName) {
   if (data.length < 2) return [];
   var headers = data[0];
   var tz = ss.getSpreadsheetTimeZone();
-  return data.slice(1).map(function(row) {
-    var obj = {};
+  return data.slice(1).map(function(row, idx) {
+    var obj = { _rowIndex: idx + 2 };
     headers.forEach(function(header, index) {
       var val = row[index];
       if (val instanceof Date) {
@@ -172,4 +172,243 @@ function deleteTransactionRow(rowIndex) {
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+function ensureCompanyAndGroup(group, country, company) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // 1. Ensure Company exists in dim_company
+  if (company && company.trim()) {
+    var companySheet = ss.getSheetByName("dim_company");
+    if (companySheet) {
+      var companyData = companySheet.getDataRange().getValues();
+      var existingCompanies = companyData.slice(1).map(function(row) {
+        return String(row[0]).trim().toLowerCase();
+      });
+      if (existingCompanies.indexOf(company.trim().toLowerCase()) === -1) {
+        companySheet.appendRow([company.trim()]);
+      }
+    }
+  }
+  
+  // 2. Ensure Group exists in dim_group
+  if (group && group.trim()) {
+    var groupSheet = ss.getSheetByName("dim_group");
+    if (groupSheet) {
+      var groupData = groupSheet.getDataRange().getValues();
+      var existingGroups = groupData.slice(1).map(function(row) {
+        return String(row[0]).trim().toLowerCase();
+      });
+      if (existingGroups.indexOf(group.trim().toLowerCase()) === -1) {
+        groupSheet.appendRow([group.trim(), country ? country.trim() : "", company ? company.trim() : ""]);
+      }
+    }
+  }
+}
+
+function addMemberMetadata(memberData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // If inline group details are provided, ensure they exist first
+    if (memberData.new_group_details) {
+      var gd = memberData.new_group_details;
+      ensureCompanyAndGroup(gd.group, gd.country, gd.company);
+    }
+    
+    var sheet = ss.getSheetByName("dim_member");
+    if (!sheet) {
+      return { success: false, error: "dim_member sheet not found" };
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    var lastRowIdx = sheet.getLastRow();
+    
+    // Read formulas from the preceding row if it exists
+    var formulas = [];
+    if (lastRowIdx >= 2) {
+      formulas = sheet.getRange(lastRowIdx, 1, 1, headers.length).getFormulas()[0];
+    }
+    
+    var newRowIdx = lastRowIdx + 1;
+    var rowValues = [];
+    
+    headers.forEach(function(header, index) {
+      var formula = formulas[index];
+      if (formula) {
+        // Translate formula
+        var newFormula = copyFormulaForNewRow(formula, lastRowIdx, newRowIdx);
+        rowValues.push(newFormula);
+      } else if (header === 'country') {
+        rowValues.push("=VLOOKUP(D" + newRowIdx + ", dim_group!A:C, 2, FALSE)");
+      } else if (header === 'company') {
+        rowValues.push("=VLOOKUP(D" + newRowIdx + ", dim_group!A:C, 3, FALSE)");
+      } else {
+        var val = memberData[header];
+        if (val === undefined || val === null) {
+          rowValues.push("");
+        } else {
+          rowValues.push(val);
+        }
+      }
+    });
+    
+    sheet.appendRow(rowValues);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+function addGroupMetadata(groupData) {
+  try {
+    ensureCompanyAndGroup(groupData.group, groupData.country, groupData.company);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+function updateMemberMetadata(rowIndex, memberData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // If inline group details are provided, ensure they exist first
+    if (memberData.new_group_details) {
+      var gd = memberData.new_group_details;
+      ensureCompanyAndGroup(gd.group, gd.country, gd.company);
+    }
+    
+    var sheet = ss.getSheetByName("dim_member");
+    if (!sheet) {
+      return { success: false, error: "dim_member sheet not found" };
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    
+    // Read formulas from row rowIndex
+    var existingFormulas = sheet.getRange(rowIndex, 1, 1, headers.length).getFormulas()[0];
+    
+    var rowValues = [];
+    headers.forEach(function(header, index) {
+      var formula = existingFormulas[index];
+      if (formula) {
+        rowValues.push(formula);
+      } else if (header === 'country') {
+        rowValues.push("=VLOOKUP(D" + rowIndex + ", dim_group!A:C, 2, FALSE)");
+      } else if (header === 'company') {
+        rowValues.push("=VLOOKUP(D" + rowIndex + ", dim_group!A:C, 3, FALSE)");
+      } else {
+        var val = memberData[header];
+        rowValues.push(val !== undefined && val !== null ? val : "");
+      }
+    });
+    
+    sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+function deleteMemberMetadata(rowIndex) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName("dim_member");
+    if (!sheet) return { success: false, error: "dim_member sheet not found" };
+    
+    if (rowIndex) {
+      sheet.deleteRow(rowIndex);
+      return { success: true };
+    }
+    return { success: false, error: "Missing row index" };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+function updateGroupMetadata(rowIndex, groupData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var groupSheet = ss.getSheetByName("dim_group");
+    if (!groupSheet) return { success: false, error: "dim_group sheet not found" };
+    
+    // First, save company to dim_company if new
+    var company = groupData.company;
+    if (company && company.trim()) {
+      var companySheet = ss.getSheetByName("dim_company");
+      if (companySheet) {
+        var companyData = companySheet.getDataRange().getValues();
+        var existingCompanies = companyData.slice(1).map(function(row) {
+          return String(row[0]).trim().toLowerCase();
+        });
+        if (existingCompanies.indexOf(company.trim().toLowerCase()) === -1) {
+          companySheet.appendRow([company.trim()]);
+        }
+      }
+    }
+    
+    var oldGroup = groupSheet.getRange(rowIndex, 1).getValue();
+    var newGroup = groupData.group.trim();
+    
+    // Write new values
+    groupSheet.getRange(rowIndex, 1, 1, 3).setValues([[newGroup, groupData.country, company]]);
+    
+    // Update members referencing old group
+    if (oldGroup && newGroup && oldGroup.toLowerCase() !== newGroup.toLowerCase()) {
+      var memberSheet = ss.getSheetByName("dim_member");
+      if (memberSheet) {
+        var memberData = memberSheet.getDataRange().getValues();
+        var memberHeaders = memberData[0];
+        var groupColIdx = memberHeaders.indexOf("group") + 1;
+        if (groupColIdx > 0) {
+          for (var i = 1; i < memberData.length; i++) {
+            if (String(memberData[i][groupColIdx - 1]).toLowerCase() === oldGroup.toLowerCase()) {
+              memberSheet.getRange(i + 1, groupColIdx).setValue(newGroup);
+            }
+          }
+        }
+      }
+    }
+    
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+function deleteGroupMetadata(rowIndex) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var groupSheet = ss.getSheetByName("dim_group");
+    if (!groupSheet) return { success: false, error: "dim_group sheet not found" };
+    
+    var groupName = groupSheet.getRange(rowIndex, 1).getValue();
+    
+    // Delete group row
+    groupSheet.deleteRow(rowIndex);
+    
+    // Update members to group "N/A"
+    if (groupName) {
+      var memberSheet = ss.getSheetByName("dim_member");
+      if (memberSheet) {
+        var memberData = memberSheet.getDataRange().getValues();
+        var memberHeaders = memberData[0];
+        var groupColIdx = memberHeaders.indexOf("group") + 1;
+        if (groupColIdx > 0) {
+          for (var i = 1; i < memberData.length; i++) {
+            if (String(memberData[i][groupColIdx - 1]).toLowerCase() === groupName.toLowerCase()) {
+              memberSheet.getRange(i + 1, groupColIdx).setValue("N/A");
+            }
+          }
+        }
+      }
+    }
+    
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
 }

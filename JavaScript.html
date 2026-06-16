@@ -72,6 +72,7 @@
 
   let METADATA = {};
   let SELECTED_ROW_INDEX = null;
+  let TRANSACTION_EDIT_MODE = false;
 
   function initializeDashboardEngine() {
     try {
@@ -367,6 +368,7 @@
   function renderAllViews() {
     renderRawTable();
     renderEventsPivotTable();
+    renderMetadataTables();
 
     ['MEMBER', 'GROUP', 'COLOR'].forEach(vk => {
       let lower = vk.toLowerCase();
@@ -452,6 +454,9 @@
     if(totalRecords === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No matching records found.</div>"; return; }
 
     let htmlBuffer = ["<table><thead><tr>"];
+    if (TRANSACTION_EDIT_MODE) {
+      htmlBuffer.push("<th>Edit</th>");
+    }
     REORDERED_HEADERS.forEach(h => {
       let sortClass = RAW_SORT.column === h ? (RAW_SORT.asc ? 'class="sort-asc"' : 'class="sort-desc"') : '';
       htmlBuffer.push('<th ' + sortClass + ' onclick="handleRawSort(\'' + h + '\')">' + h + '</th>');
@@ -463,6 +468,9 @@
       let row = FILTERED_DATA[i];
       let rowSelectedClass = SELECTED_ROW_INDEX === i ? 'class="selected-row"' : '';
       htmlBuffer.push('<tr ' + rowSelectedClass + ' onclick="selectRow(event, ' + i + ')" ondblclick="openEditModal(null, ' + i + ')">');
+      if (TRANSACTION_EDIT_MODE) {
+        htmlBuffer.push('<td><button class="edit-row-btn" onclick="openEditModal(event, ' + i + ')">Edit</button></td>');
+      }
       REORDERED_HEADERS.forEach(h => {
         let val = row[h] !== undefined ? row[h] : '';
         
@@ -1049,6 +1057,9 @@
   }
 
   function switchTab(evt, tabId) {
+    // Automatically close metadata views to prevent UI elements leak across tabs
+    closeAllMetadataViews();
+
     const contents = document.getElementsByClassName("tab-content");
     for (let i = 0; i < contents.length; i++) contents[i].classList.remove("active");
     
@@ -1339,7 +1350,8 @@
     if (event.target.classList.contains('raw-clickable-cell') || 
         event.target.classList.contains('image-link') || 
         event.target.tagName === 'A' || 
-        event.target.tagName === 'SPAN') {
+        event.target.tagName === 'SPAN' ||
+        event.target.classList.contains('edit-row-btn')) {
       return;
     }
     
@@ -1351,31 +1363,25 @@
       rows[i].classList.remove('selected-row');
     }
     event.currentTarget.classList.add('selected-row');
-    
-    const editBtn = document.getElementById('global_edit_btn');
-    if (editBtn) {
-      editBtn.disabled = false;
-      editBtn.style.opacity = '1';
-      editBtn.style.cursor = 'pointer';
-      editBtn.title = "Edit selected transaction";
-    }
   }
 
   function resetSelection() {
     SELECTED_ROW_INDEX = null;
-    const editBtn = document.getElementById('global_edit_btn');
-    if (editBtn) {
-      editBtn.disabled = true;
-      editBtn.style.opacity = '0.4';
-      editBtn.style.cursor = 'not-allowed';
-      editBtn.title = "Select a row to edit";
-    }
   }
 
-  function openSelectedEditModal() {
-    if (SELECTED_ROW_INDEX !== null) {
-      openEditModal(null, SELECTED_ROW_INDEX);
+  function toggleTransactionEditMode() {
+    TRANSACTION_EDIT_MODE = !TRANSACTION_EDIT_MODE;
+    const editBtn = document.getElementById('global_edit_btn');
+    if (editBtn) {
+      if (TRANSACTION_EDIT_MODE) {
+        editBtn.classList.add('active');
+        editBtn.title = "Exit Edit Mode";
+      } else {
+        editBtn.classList.remove('active');
+        editBtn.title = "Toggle Edit Mode";
+      }
     }
+    renderRawTable();
   }
 
   function deleteTransaction() {
@@ -1453,5 +1459,681 @@
   function hideLoading() {
     const spinner = document.getElementById('loading_spinner');
     if (spinner) spinner.style.display = 'none';
+  }
+
+  // ==========================================
+  // METADATA TAB RENDERING AND SEARCH
+  // ==========================================
+  function renderMetadataTables() {
+    if (!METADATA || !METADATA.members || !METADATA.groups) return;
+
+    const memberSearch = document.getElementById('member_search').value.toLowerCase().trim();
+    const groupSearch = document.getElementById('group_search').value.toLowerCase().trim();
+
+    // 1. Render Members Table
+    const memberBody = document.getElementById('metadata_member_body');
+    if (memberBody) {
+      let filteredMembers = METADATA.members;
+      if (memberSearch) {
+        filteredMembers = filteredMembers.filter(m => 
+          (m.member_name && m.member_name.toLowerCase().includes(memberSearch)) ||
+          (m.group && m.group.toLowerCase().includes(memberSearch)) ||
+          (m.color && m.color.toLowerCase().includes(memberSearch)) ||
+          (m.country && m.country.toLowerCase().includes(memberSearch)) ||
+          (m.company && m.company.toLowerCase().includes(memberSearch))
+        );
+      }
+      
+      memberBody.innerHTML = filteredMembers.map(m => {
+        const isActiveText = m.is_active === true || m.is_active === 'TRUE' || m.is_active === 'true' ? '🟢 Yes' : '🔴 No';
+        
+        return '<tr>' +
+          '<td><button class="edit-row-btn" onclick="openEditMemberModal(' + m._rowIndex + ')">Edit</button></td>' +
+          '<td>' + (m.member_name || '-') + '</td>' +
+          '<td>' + (m.group || '-') + '</td>' +
+          '<td><span style="' + getTextColorStyle(m.color) + '">' + (m.color || '-') + '</span></td>' +
+          '<td>' + (m.country || '-') + '</td>' +
+          '<td>' + (m.company || '-') + '</td>' +
+          '<td>' + (m.start_date || '-') + '</td>' +
+          '<td>' + (m.end_date || '-') + '</td>' +
+          '<td>' + isActiveText + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    // 2. Render Groups Table
+    const groupBody = document.getElementById('metadata_group_body');
+    if (groupBody) {
+      let filteredGroups = METADATA.groups;
+      if (groupSearch) {
+        filteredGroups = filteredGroups.filter(g => 
+          (g.group && g.group.toLowerCase().includes(groupSearch)) ||
+          (g.company && g.company.toLowerCase().includes(groupSearch)) ||
+          (g.country && g.country.toLowerCase().includes(groupSearch))
+        );
+      }
+
+      groupBody.innerHTML = filteredGroups.map(g => {
+        return '<tr>' +
+          '<td><button class="edit-row-btn" onclick="openEditGroupModal(' + g._rowIndex + ')">Edit</button></td>' +
+          '<td>' + (g.group || '-') + '</td>' +
+          '<td>' + (g.country || '-') + '</td>' +
+          '<td>' + (g.company || '-') + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+  }
+
+  function filterMetadataTables() {
+    renderMetadataTables();
+  }
+
+  // ==========================================
+  // METADATA EDIT, DELETE & TOGGLE VIEW LOGIC
+  // ==========================================
+  function closeAllMetadataViews() {
+    // Put inline metadata wrapper back in body or hide it
+    const wrapper = document.getElementById('inline_metadata_wrapper');
+    if (wrapper) {
+      wrapper.style.display = 'none';
+      document.body.appendChild(wrapper); // remove from whatever placeholder it was in
+    }
+    
+    // Show all content wrappers
+    ['raw_table_wrapper', 'member_content_wrapper', 'group_content_wrapper'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'block';
+    });
+    
+    // Show raw transaction controls
+    const rawControls = document.getElementById('transaction_controls');
+    if (rawControls) rawControls.style.display = 'flex';
+    
+    // Show main view toggles in Member and Group tabs
+    const memberToggle = document.getElementById('member_graph_toggle_wrapper');
+    if (memberToggle) memberToggle.style.display = 'flex';
+    const groupToggle = document.getElementById('group_graph_toggle_wrapper');
+    if (groupToggle) groupToggle.style.display = 'flex';
+    
+    // Reset all button labels and active states
+    const btnRaw = document.getElementById('toggle_metadata_btn');
+    if (btnRaw) {
+      btnRaw.innerText = '⚙️ Manage Metadata';
+      btnRaw.classList.remove('active');
+    }
+    const btnMember = document.getElementById('toggle_metadata_btn_member');
+    if (btnMember) {
+      btnMember.innerText = '⚙️ Manage Metadata';
+      btnMember.classList.remove('active');
+    }
+    const btnGroup = document.getElementById('toggle_metadata_btn_group');
+    if (btnGroup) {
+      btnGroup.innerText = '⚙️ Manage Metadata';
+      btnGroup.classList.remove('active');
+    }
+  }
+
+  function toggleMetadataView(context) {
+    if (!context) context = 'raw';
+    
+    const wrapper = document.getElementById('inline_metadata_wrapper');
+    const isCurrentlyOpen = wrapper && wrapper.style.display === 'block' && wrapper.parentNode.id.startsWith(context);
+    
+    // First, close everything to get a clean state
+    closeAllMetadataViews();
+    
+    if (!isCurrentlyOpen) {
+      // Open metadata view in the requested context
+      let contentWrapper, placeholder, toggleBtn, backText;
+      
+      if (context === 'raw') {
+        contentWrapper = document.getElementById('raw_table_wrapper');
+        placeholder = document.getElementById('raw_metadata_placeholder');
+        toggleBtn = document.getElementById('toggle_metadata_btn');
+        backText = 'Back to Transactions';
+        
+        // Hide transaction controls on raw tab
+        const transactionControls = document.getElementById('transaction_controls');
+        if (transactionControls) transactionControls.style.display = 'none';
+      } else if (context === 'member') {
+        contentWrapper = document.getElementById('member_content_wrapper');
+        placeholder = document.getElementById('member_metadata_placeholder');
+        toggleBtn = document.getElementById('toggle_metadata_btn_member');
+        backText = 'Back to Member View';
+        
+        // Hide Member tab graph toggle buttons
+        const memberToggle = document.getElementById('member_graph_toggle_wrapper');
+        if (memberToggle) memberToggle.style.display = 'none';
+      } else if (context === 'group') {
+        contentWrapper = document.getElementById('group_content_wrapper');
+        placeholder = document.getElementById('group_metadata_placeholder');
+        toggleBtn = document.getElementById('toggle_metadata_btn_group');
+        backText = 'Back to Group View';
+        
+        // Hide Group tab graph toggle buttons
+        const groupToggle = document.getElementById('group_graph_toggle_wrapper');
+        if (groupToggle) groupToggle.style.display = 'none';
+      }
+      
+      if (contentWrapper) contentWrapper.style.display = 'none';
+      if (placeholder && wrapper) {
+        placeholder.appendChild(wrapper);
+        wrapper.style.display = 'block';
+      }
+      if (toggleBtn) {
+        toggleBtn.innerText = backText;
+        toggleBtn.classList.add('active');
+      }
+      
+      renderMetadataTables();
+    }
+  }
+
+  function openEditMemberModal(rowIndex) {
+    const member = METADATA.members.find(m => m._rowIndex === rowIndex);
+    if (!member) {
+      alert('Member data not found');
+      return;
+    }
+    
+    const form = document.getElementById('member_form');
+    if (form) form.reset();
+    
+    // Set Edit title
+    document.querySelector('#member_modal .modal-header h3').innerText = 'Edit Member';
+    
+    // Set row index
+    document.getElementById('member_form_row_index').value = rowIndex;
+    
+    // Show Delete button
+    document.getElementById('member_delete_btn').style.display = 'inline-block';
+    
+    // Hide inline group / company fields initially
+    const inlineFields = document.getElementById('member_inline_group_fields');
+    if (inlineFields) inlineFields.style.display = 'none';
+    const inlineCompanyGroup = document.getElementById('member_inline_company_name_group');
+    if (inlineCompanyGroup) inlineCompanyGroup.style.display = 'none';
+    
+    // Populate dropdowns first
+    populateMetadataFormDropdowns();
+    
+    // Populate form fields
+    document.getElementById('member_form_name').value = member.member_name || '';
+    document.getElementById('member_form_image').value = member.member_image && member.member_image !== 'None' ? member.member_image : '';
+    
+    const colorSelect = document.getElementById('member_form_color');
+    if (colorSelect) colorSelect.value = member.color || '';
+    
+    const groupSelect = document.getElementById('member_form_group');
+    if (groupSelect) groupSelect.value = member.group || '';
+    
+    document.getElementById('member_form_start_date').value = member.start_date || '1001-01-01';
+    document.getElementById('member_form_end_date').value = member.end_date || '9999-12-31';
+    
+    document.getElementById('member_form_active').checked = member.is_active === true || member.is_active === 'TRUE' || member.is_active === 'true';
+    
+    // Open Modal
+    const modal = document.getElementById('member_modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function openEditGroupModal(rowIndex) {
+    const group = METADATA.groups.find(g => g._rowIndex === rowIndex);
+    if (!group) {
+      alert('Group data not found');
+      return;
+    }
+    
+    const form = document.getElementById('group_form');
+    if (form) form.reset();
+    
+    // Set Edit title
+    document.querySelector('#group_modal .modal-header h3').innerText = 'Edit Group';
+    
+    // Set row index
+    document.getElementById('group_form_row_index').value = rowIndex;
+    
+    // Show Delete button
+    document.getElementById('group_delete_btn').style.display = 'inline-block';
+    
+    // Hide inline company initially
+    const inlineCompanyGroup = document.getElementById('group_inline_company_name_group');
+    if (inlineCompanyGroup) inlineCompanyGroup.style.display = 'none';
+    
+    // Populate dropdowns first
+    populateMetadataFormDropdowns();
+    
+    // Populate form fields
+    document.getElementById('group_form_name').value = group.group || '';
+    
+    const countrySelect = document.getElementById('group_form_country');
+    if (countrySelect) countrySelect.value = group.country || '';
+    
+    const companySelect = document.getElementById('group_form_company');
+    if (companySelect) companySelect.value = group.company || '';
+    
+    // Open Modal
+    const modal = document.getElementById('group_modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function deleteMember() {
+    const rowIndexVal = document.getElementById('member_form_row_index').value;
+    if (!rowIndexVal) return;
+    
+    const name = document.getElementById('member_form_name').value;
+    if (!confirm('Are you sure you want to delete member "' + name + '"?')) return;
+    
+    const deleteBtn = document.getElementById('member_delete_btn');
+    if (deleteBtn) deleteBtn.disabled = true;
+    
+    showLoading('Deleting Member...');
+    
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          closeMemberModal();
+          google.script.run
+            .withSuccessHandler(function(freshMetadata) {
+              METADATA = freshMetadata;
+              renderMetadataTables();
+              hideLoading();
+              if (deleteBtn) deleteBtn.disabled = false;
+            })
+            .withFailureHandler(function(err) {
+              alert('Member deleted, but failed to reload lists: ' + err.message);
+              hideLoading();
+              if (deleteBtn) deleteBtn.disabled = false;
+            })
+            .getMetadata();
+        } else {
+          alert('Error deleting: ' + response.error);
+          hideLoading();
+          if (deleteBtn) deleteBtn.disabled = false;
+        }
+      })
+      .withFailureHandler(function(err) {
+        alert('Connection failure: ' + err.message);
+        hideLoading();
+        if (deleteBtn) deleteBtn.disabled = false;
+      })
+      .deleteMemberMetadata(parseInt(rowIndexVal));
+  }
+
+  function deleteGroup() {
+    const rowIndexVal = document.getElementById('group_form_row_index').value;
+    if (!rowIndexVal) return;
+    
+    const name = document.getElementById('group_form_name').value;
+    if (!confirm('Are you sure you want to delete group "' + name + '"? Any members in this group will have their group set to "N/A".')) return;
+    
+    const deleteBtn = document.getElementById('group_delete_btn');
+    if (deleteBtn) deleteBtn.disabled = true;
+    
+    showLoading('Deleting Group...');
+    
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          closeGroupModal();
+          google.script.run
+            .withSuccessHandler(function(freshMetadata) {
+              METADATA = freshMetadata;
+              renderMetadataTables();
+              hideLoading();
+              if (deleteBtn) deleteBtn.disabled = false;
+            })
+            .withFailureHandler(function(err) {
+              alert('Group deleted, but failed to reload lists: ' + err.message);
+              hideLoading();
+              if (deleteBtn) deleteBtn.disabled = false;
+            })
+            .getMetadata();
+        } else {
+          alert('Error deleting: ' + response.error);
+          hideLoading();
+          if (deleteBtn) deleteBtn.disabled = false;
+        }
+      })
+      .withFailureHandler(function(err) {
+        alert('Connection failure: ' + err.message);
+        hideLoading();
+        if (deleteBtn) deleteBtn.disabled = false;
+      })
+      .deleteGroupMetadata(parseInt(rowIndexVal));
+  }
+
+  // ==========================================
+  // METADATA TAB DROPDOWN POPULATORS
+  // ==========================================
+  function populateMetadataFormDropdowns() {
+    if (!METADATA) return;
+
+    // 1. Populate Member Modal Colors
+    const colorSelect = document.getElementById('member_form_color');
+    if (colorSelect && METADATA.colors) {
+      colorSelect.innerHTML = '<option value="">-- Select Color --</option>' +
+        METADATA.colors.map(c => '<option value="' + c.color + '">' + c.color + '</option>').join('');
+    }
+
+    // 2. Populate Member Modal Groups
+    const groupSelect = document.getElementById('member_form_group');
+    if (groupSelect && METADATA.groups) {
+      const uniqueGroups = [...new Set(METADATA.groups.map(g => g.group))].sort();
+      groupSelect.innerHTML = '<option value="">-- Select Group --</option>' +
+        uniqueGroups.map(g => '<option value="' + g + '">' + g + '</option>').join('') +
+        '<option value="ADD_NEW_GROUP" style="font-weight: bold; color: #8ab4f8;">[+ Add New Group]</option>';
+    }
+
+    // 3. Populate Inline Group Countries and Group Modal Countries
+    const countries = METADATA.countries || [];
+    const inlineCountrySelect = document.getElementById('member_inline_group_country');
+    const groupCountrySelect = document.getElementById('group_form_country');
+    
+    const countryOptions = countries.map(c => 
+      '<option value="' + c.displayed_country + '">' + c.displayed_country + ' (' + c.country + ')</option>'
+    ).join('');
+
+    if (inlineCountrySelect) {
+      inlineCountrySelect.innerHTML = '<option value="">-- Select Country --</option>' + countryOptions;
+    }
+    if (groupCountrySelect) {
+      groupCountrySelect.innerHTML = '<option value="">-- Select Country --</option>' + countryOptions;
+    }
+
+    // 4. Populate Inline Group Companies and Group Modal Companies
+    const companiesList = (METADATA.companies || []).map(c => c.company).filter(Boolean).sort();
+    const inlineCompanySelect = document.getElementById('member_inline_group_company');
+    const groupCompanySelect = document.getElementById('group_form_company');
+
+    const companyOptions = companiesList.map(c => '<option value="' + c + '">' + c + '</option>').join('') +
+      '<option value="ADD_NEW_COMPANY" style="font-weight: bold; color: #8ab4f8;">[+ Add New Company]</option>';
+
+    if (inlineCompanySelect) {
+      inlineCompanySelect.innerHTML = '<option value="">-- Select Company --</option>' + companyOptions;
+    }
+    if (groupCompanySelect) {
+      groupCompanySelect.innerHTML = '<option value="">-- Select Company --</option>' + companyOptions;
+    }
+  }
+
+  // ==========================================
+  // METADATA TAB MODAL CONTROLS & EVENT TOGGLES
+  // ==========================================
+  function openAddMemberModal() {
+    const form = document.getElementById('member_form');
+    if (form) form.reset();
+    
+    // Clear Row Index & Hide Delete Button
+    document.getElementById('member_form_row_index').value = '';
+    document.getElementById('member_delete_btn').style.display = 'none';
+    document.querySelector('#member_modal .modal-header h3').innerText = 'Add Member';
+    
+    const inlineFields = document.getElementById('member_inline_group_fields');
+    if (inlineFields) inlineFields.style.display = 'none';
+    const inlineCompanyGroup = document.getElementById('member_inline_company_name_group');
+    if (inlineCompanyGroup) inlineCompanyGroup.style.display = 'none';
+    
+    document.getElementById('member_form_start_date').value = '1001-01-01';
+    document.getElementById('member_form_end_date').value = '9999-12-31';
+    document.getElementById('member_form_active').checked = true;
+
+    populateMetadataFormDropdowns();
+    
+    const modal = document.getElementById('member_modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeMemberModal() {
+    const modal = document.getElementById('member_modal');
+    if (modal) modal.style.display = 'none';
+    
+    // Reset Row Index & Hide Delete Button & reset title
+    document.getElementById('member_form_row_index').value = '';
+    document.getElementById('member_delete_btn').style.display = 'none';
+    document.querySelector('#member_modal .modal-header h3').innerText = 'Add Member';
+  }
+
+  function handleMemberFormGroupChange() {
+    const groupSelect = document.getElementById('member_form_group');
+    const inlineFields = document.getElementById('member_inline_group_fields');
+    if (!groupSelect || !inlineFields) return;
+    
+    if (groupSelect.value === 'ADD_NEW_GROUP') {
+      inlineFields.style.display = 'block';
+      document.getElementById('member_inline_group_name').required = true;
+      document.getElementById('member_inline_group_country').required = true;
+      document.getElementById('member_inline_group_company').required = true;
+    } else {
+      inlineFields.style.display = 'none';
+      document.getElementById('member_inline_group_name').required = false;
+      document.getElementById('member_inline_group_country').required = false;
+      document.getElementById('member_inline_group_company').required = false;
+    }
+  }
+
+  function handleMemberInlineCompanyChange() {
+    const companySelect = document.getElementById('member_inline_group_company');
+    const inlineCompanyGroup = document.getElementById('member_inline_company_name_group');
+    if (!companySelect || !inlineCompanyGroup) return;
+
+    if (companySelect.value === 'ADD_NEW_COMPANY') {
+      inlineCompanyGroup.style.display = 'block';
+      document.getElementById('member_inline_company_name').required = true;
+    } else {
+      inlineCompanyGroup.style.display = 'none';
+      document.getElementById('member_inline_company_name').required = false;
+    }
+  }
+
+  function openAddGroupModal() {
+    const form = document.getElementById('group_form');
+    if (form) form.reset();
+    
+    // Clear Row Index & Hide Delete Button & reset title
+    document.getElementById('group_form_row_index').value = '';
+    document.getElementById('group_delete_btn').style.display = 'none';
+    document.querySelector('#group_modal .modal-header h3').innerText = 'Add Group';
+    
+    const inlineCompanyGroup = document.getElementById('group_inline_company_name_group');
+    if (inlineCompanyGroup) inlineCompanyGroup.style.display = 'none';
+
+    populateMetadataFormDropdowns();
+
+    const modal = document.getElementById('group_modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeGroupModal() {
+    const modal = document.getElementById('group_modal');
+    if (modal) modal.style.display = 'none';
+    
+    // Reset Row Index & Hide Delete Button & reset title
+    document.getElementById('group_form_row_index').value = '';
+    document.getElementById('group_delete_btn').style.display = 'none';
+    document.querySelector('#group_modal .modal-header h3').innerText = 'Add Group';
+  }
+
+  function handleGroupFormCompanyChange() {
+    const companySelect = document.getElementById('group_form_company');
+    const inlineCompanyGroup = document.getElementById('group_inline_company_name_group');
+    if (!companySelect || !inlineCompanyGroup) return;
+
+    if (companySelect.value === 'ADD_NEW_COMPANY') {
+      inlineCompanyGroup.style.display = 'block';
+      document.getElementById('group_form_new_company').required = true;
+    } else {
+      inlineCompanyGroup.style.display = 'none';
+      document.getElementById('group_form_new_company').required = false;
+    }
+  }
+
+  // ==========================================
+  // METADATA TAB FORM SUBMISSIONS
+  // ==========================================
+  function submitMemberForm(event) {
+    if (event) event.preventDefault();
+    
+    const name = document.getElementById('member_form_name').value.trim();
+    const image = document.getElementById('member_form_image').value.trim();
+    const color = document.getElementById('member_form_color').value;
+    const group = document.getElementById('member_form_group').value;
+    const start_date = document.getElementById('member_form_start_date').value;
+    const end_date = document.getElementById('member_form_end_date').value;
+    const is_active = document.getElementById('member_form_active').checked ? 'TRUE' : 'FALSE';
+
+    const saveBtn = document.getElementById('member_submit_btn');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerText = 'Saving...';
+    }
+
+    showLoading('Saving Member...');
+
+    const memberData = {
+      member_name: name,
+      member_image: image || 'None',
+      color: color,
+      group: group === 'ADD_NEW_GROUP' ? document.getElementById('member_inline_group_name').value.trim() : group,
+      start_date: start_date,
+      end_date: end_date,
+      is_active: is_active
+    };
+
+    if (group === 'ADD_NEW_GROUP') {
+      const companyVal = document.getElementById('member_inline_group_company').value;
+      const finalCompany = companyVal === 'ADD_NEW_COMPANY' ? 
+        document.getElementById('member_inline_company_name').value.trim() : companyVal;
+        
+      memberData.new_group_details = {
+        group: memberData.group,
+        country: document.getElementById('member_inline_group_country').value,
+        company: finalCompany
+      };
+    }
+
+    const rowIndexVal = document.getElementById('member_form_row_index').value;
+    const isEditMode = rowIndexVal !== '';
+
+    const runner = google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          closeMemberModal();
+          google.script.run
+            .withSuccessHandler(function(freshMetadata) {
+              METADATA = freshMetadata;
+              renderMetadataTables();
+              hideLoading();
+              if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'Save Member';
+              }
+            })
+            .withFailureHandler(function(err) {
+              alert('Member saved, but failed to reload lists: ' + err.message);
+              hideLoading();
+              if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'Save Member';
+              }
+            })
+            .getMetadata();
+        } else {
+          alert('Error saving: ' + response.error);
+          hideLoading();
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = 'Save Member';
+          }
+        }
+      })
+      .withFailureHandler(function(err) {
+        alert('Connection failure: ' + err.message);
+        hideLoading();
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = 'Save Member';
+        }
+      });
+
+    if (isEditMode) {
+      runner.updateMemberMetadata(parseInt(rowIndexVal), memberData);
+    } else {
+      runner.addMemberMetadata(memberData);
+    }
+  }
+
+  function submitGroupForm(event) {
+    if (event) event.preventDefault();
+
+    const name = document.getElementById('group_form_name').value.trim();
+    const country = document.getElementById('group_form_country').value;
+    const companyVal = document.getElementById('group_form_company').value;
+    const finalCompany = companyVal === 'ADD_NEW_COMPANY' ? 
+      document.getElementById('group_form_new_company').value.trim() : companyVal;
+
+    const saveBtn = document.getElementById('group_submit_btn');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerText = 'Saving...';
+    }
+
+    showLoading('Saving Group...');
+
+    const groupData = {
+      group: name,
+      country: country,
+      company: finalCompany
+    };
+
+    const rowIndexVal = document.getElementById('group_form_row_index').value;
+    const isEditMode = rowIndexVal !== '';
+
+    const runner = google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          closeGroupModal();
+          google.script.run
+            .withSuccessHandler(function(freshMetadata) {
+              METADATA = freshMetadata;
+              renderMetadataTables();
+              hideLoading();
+              if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'Save Group';
+              }
+            })
+            .withFailureHandler(function(err) {
+              alert('Group saved, but failed to reload lists: ' + err.message);
+              hideLoading();
+              if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'Save Group';
+              }
+            })
+            .getMetadata();
+        } else {
+          alert('Error saving: ' + response.error);
+          hideLoading();
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = 'Save Group';
+          }
+        }
+      })
+      .withFailureHandler(function(err) {
+        alert('Connection failure: ' + err.message);
+        hideLoading();
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = 'Save Group';
+        }
+      });
+
+    if (isEditMode) {
+      runner.updateGroupMetadata(parseInt(rowIndexVal), groupData);
+    } else {
+      runner.addGroupMetadata(groupData);
+    }
   }
 </script>

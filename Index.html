@@ -5,6 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Summary Analytics Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   
   <!-- Include CSS Stylesheet -->
@@ -12,7 +15,10 @@
 </head>
 <body>
 
-  <h1>Cheki Database</h1>
+  <div class="app-header-container">
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAACv0lEQVR4nO2XwU/TUBzHv++VN5cs8aIxYThqpolsByP/ARc8mmyY6EETOGA46MWkJP4J7OCBGC8qLCYSL+yAxoP7Azwuk2Ts4AYIHEiQQWLWlrX7eRhdJmyvpQVP+17atK+/93nv9+u3vwJ99dXXxYq5DUilUhSJREBErQcYAxG1j/8EY61wJ6870nUduVxOOqf0ZiaToUQigUKhACFEz4lcxQCrYWF09C7K5TI0bbbnvAOyOENDUczNzSEajSKZTMK2bXDO4HAxhta5E76T9/gaNQmKoqBUKiGfz2NmZkbKLgXSdR2x4RimJqeQzWZh23Y7LV5F1AKanp7GYnYRuq77BwIYQMD6+jqWlpbORnJCY2NjBILrgriXYKFQKAgLAEAI4WmcJyDfxexD8pR5SJJ6JUEKa4WxqYHN3+VAqZUDuWzMeOwJ3R9+iiPLAggQYgCft95S/tcH31AuRQ2AAazLVt28eofSN55j+7AKix2BgYEbA0jFnqFSL1B1b9UXlHvKOn2mQwSCAgW75ha+7WYBEMavTUK9fLvrAs4HSJKy6t4q+7L1nh7feok/Vg2EJu5df4SPlQwqez8uJmWOZfTiWtl4wy7xCD2MvwAI+FR9hZXN1xdX1O23XfLafz/Iof7zEIQmvm68CwTjCgSgVT8Sd93er7Dt/UpQjrakxujYfOBln0HuTn1OJu31mywFIhA4Z7AsKzBQo2F56hSkNcQZh2GYUFUV8/PzZNs2GOe9i9zxrY5zp/1QVRWmaYBxOZQcSOGo1+vQNA0jIyOB+qGFhQUMRgehcMU/EDUJQggUi0VWLBbPBNJNqqpSk5rSMdIaEkLg4KAWGMRRrVZDSMh7K+kO7evsQNNmMTHxgMLhsO++iDEGwzAQj8extrYmH+sWLJ1OS2G6/Q6dmuG4dTVNE8vLy//T1vrqq69T+gtEQgkEKnBqEAAAAABJRU5ErkJggg==" alt="Logo" class="app-logo">
+    <span class="app-title">Cheki Database</span>
+  </div>
   <div class="kpi-container">
     <div class="kpi-card">
       <div class="kpi-title">Total Cheki</div>
@@ -85,88 +91,171 @@
   </div>
 
   <div id="raw_data_tab" class="tab-content active">
-    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 12px;">
-      <button id="global_edit_btn" class="action-btn-secondary" onclick="openSelectedEditModal()" disabled style="padding: 8px 12px; opacity: 0.4; cursor: not-allowed; font-size: 14px;" title="Select a row to edit">✏️</button>
-      <button class="action-btn-primary" onclick="openAddModal()">+ Add Transaction</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+      <div id="transaction_controls" style="display: flex; align-items: center; gap: 8px;">
+        <button id="global_edit_btn" class="action-btn-secondary" onclick="toggleTransactionEditMode()" style="padding: 8px; display: flex; align-items: center; justify-content: center; height: 36px; width: 36px;" title="Toggle Edit Mode">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAi0lEQVR4nN2VSw7AIAhEmab3v/J0ZUMIanHqomVr8h4fRZC0nXFspf9CcKoAAPcQSSKeSxU0eAN7mSzwMADMsl8WZG3JsjczQ/Ud9EBe5qNUwWigcosifHZ7SoJV+COBAp8KVPhQ8Aa8K3gL3hWMZBV4Koj7RYGngihS4GaTda2AW5R3UTW+/2VuF1xT8Gkp3OWqeAAAAABJRU5ErkJggg==" alt="Edit" style="width: 18px; height: 18px; filter: brightness(0) invert(1);" />
+        </button>
+        <button class="action-btn-dark" onclick="openAddModal()">+ Add Transaction</button>
+      </div>
+      <div style="margin-left: auto;">
+        <button id="toggle_metadata_btn" class="action-btn-secondary" onclick="toggleMetadataView('raw')">⚙️ Manage Metadata</button>
+      </div>
     </div>
-    <div id="raw_table_container" class="table-wrapper"></div>
+    
+    <div id="raw_metadata_placeholder"></div>
+    
+    <div id="raw_table_wrapper">
+      <div id="raw_table_container" class="table-wrapper"></div>
+    </div>
+    
+    <div id="inline_metadata_wrapper" style="display: none;">
+      <div class="metadata-layout">
+        <!-- Members Panel -->
+        <div class="metadata-panel">
+          <div class="panel-header">
+            <h3>Members (dim_member)</h3>
+            <button class="action-btn-primary" onclick="openAddMemberModal()">+ Add Member</button>
+          </div>
+          <input type="text" id="member_search" class="subfilter-search-input" placeholder="Search members by name or group..." oninput="filterMetadataTables()">
+          <div id="member_table_wrapper" class="table-wrapper" style="max-height: 500px; overflow: auto;">
+            <table id="metadata_member_table">
+              <thead>
+                <tr>
+                  <th>Actions</th>
+                  <th>Name</th>
+                  <th>Group</th>
+                  <th>Color</th>
+                  <th>Country</th>
+                  <th>Company</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Active</th>
+                </tr>
+              </thead>
+              <tbody id="metadata_member_body">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Groups Panel -->
+        <div class="metadata-panel">
+          <div class="panel-header">
+            <h3>Groups (dim_group)</h3>
+            <button class="action-btn-primary" onclick="openAddGroupModal()">+ Add Group</button>
+          </div>
+          <input type="text" id="group_search" class="subfilter-search-input" placeholder="Search groups by name or company..." oninput="filterMetadataTables()">
+          <div id="group_table_wrapper" class="table-wrapper" style="max-height: 500px; overflow: auto;">
+            <table id="metadata_group_table">
+              <thead>
+                <tr>
+                  <th>Actions</th>
+                  <th>Group</th>
+                  <th>Country</th>
+                  <th>Company</th>
+                </tr>
+              </thead>
+              <tbody id="metadata_group_body">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="member_view_tab" class="tab-content">
     <div class="view-header-actions">
-      <div class="graph-toggle">
+      <div id="member_graph_toggle_wrapper" class="graph-toggle">
         <button id="member_mode_table" class="toggle-btn active" onclick="togglePivotMode('MEMBER', 'TABLE')">Table</button>
         <button id="member_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'HEATMAP')">Heatmap</button>
         <button id="member_mode_graph" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'GRAPH')">Bar Graph</button>
         <button id="member_mode_timeline" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'TIMELINE')">Timeline</button>
       </div>
-    </div>
-    
-    <div id="member_table_wrapper" class="table-wrapper">
-      <div id="member_table_container"></div>
-    </div>
-    
-    <div id="member_heatmap_wrapper" style="display:none;">
-      <div class="graph-toggle" style="margin-bottom:10px;">
-        <button id="member_hm_qty" class="toggle-btn active" onclick="changePivotMetric('MEMBER', 'qty')">Size by Qty</button>
-        <button id="member_hm_price" class="toggle-btn" onclick="changePivotMetric('MEMBER', 'price')">Size by Price</button>
-        <span style="border-left: 1px solid #444; margin: 0 8px; height: 16px;"></span>
-        <button id="member_hm_top10" class="toggle-btn" onclick="changeHeatmapTopN('MEMBER', 10)">Top 10</button>
-        <button id="member_hm_top20" class="toggle-btn active" onclick="changeHeatmapTopN('MEMBER', 20)">Top 20</button>
-        <button id="member_hm_top50" class="toggle-btn" onclick="changeHeatmapTopN('MEMBER', 50)">Top 50</button>
+      <div style="margin-left: auto;">
+        <button id="toggle_metadata_btn_member" class="action-btn-secondary" onclick="toggleMetadataView('member')">⚙️ Manage Metadata</button>
       </div>
-      <div id="member_heatmap_container" class="heatmap-container"></div>
     </div>
     
-    <div id="member_graph_wrapper" style="display:none;">
-      <div class="graph-toggle" style="margin-bottom:10px;">
-        <button id="member_gr_qty" class="toggle-btn active" onclick="changePivotMetric('MEMBER', 'qty')">Quantity</button>
-        <button id="member_gr_price" class="toggle-btn" onclick="changePivotMetric('MEMBER', 'price')">Total Price (THB)</button>
+    <div id="member_metadata_placeholder"></div>
+    
+    <div id="member_content_wrapper">
+      <div id="member_table_wrapper" class="table-wrapper">
+        <div id="member_table_container"></div>
       </div>
-      <div id="member_chart_div" class="chart-container-div"></div>
-    </div>
+      
+      <div id="member_heatmap_wrapper" style="display:none;">
+        <div class="graph-toggle" style="margin-bottom:10px;">
+          <button id="member_hm_qty" class="toggle-btn active" onclick="changePivotMetric('MEMBER', 'qty')">Size by Qty</button>
+          <button id="member_hm_price" class="toggle-btn" onclick="changePivotMetric('MEMBER', 'price')">Size by Price</button>
+          <span style="border-left: 1px solid #444; margin: 0 8px; height: 16px;"></span>
+          <button id="member_hm_top10" class="toggle-btn" onclick="changeHeatmapTopN('MEMBER', 10)">Top 10</button>
+          <button id="member_hm_top20" class="toggle-btn active" onclick="changeHeatmapTopN('MEMBER', 20)">Top 20</button>
+          <button id="member_hm_top50" class="toggle-btn" onclick="changeHeatmapTopN('MEMBER', 50)">Top 50</button>
+        </div>
+        <div id="member_heatmap_container" class="heatmap-container"></div>
+      </div>
+      
+      <div id="member_graph_wrapper" style="display:none;">
+        <div class="graph-toggle" style="margin-bottom:10px;">
+          <button id="member_gr_qty" class="toggle-btn active" onclick="changePivotMetric('MEMBER', 'qty')">Quantity</button>
+          <button id="member_gr_price" class="toggle-btn" onclick="changePivotMetric('MEMBER', 'price')">Total Price (THB)</button>
+        </div>
+        <div id="member_chart_div" class="chart-container-div"></div>
+      </div>
 
-    <div id="member_timeline_wrapper" style="display:none;">
-      <div id="member_timeline_chart_div" class="chart-container-div"></div>
+      <div id="member_timeline_wrapper" style="display:none;">
+        <div id="member_timeline_chart_div" class="chart-container-div"></div>
+      </div>
     </div>
   </div>
 
   <div id="group_view_tab" class="tab-content">
     <div class="view-header-actions">
-      <div class="graph-toggle">
+      <div id="group_graph_toggle_wrapper" class="graph-toggle">
         <button id="group_mode_table" class="toggle-btn active" onclick="togglePivotMode('GROUP', 'TABLE')">Table</button>
         <button id="group_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('GROUP', 'HEATMAP')">Heatmap</button>
         <button id="group_mode_graph" class="toggle-btn" onclick="togglePivotMode('GROUP', 'GRAPH')">Bar Graph</button>
         <button id="group_mode_timeline" class="toggle-btn" onclick="togglePivotMode('GROUP', 'TIMELINE')">Timeline</button>
       </div>
-    </div>
-    
-    <div id="group_table_wrapper" class="table-wrapper">
-      <div id="group_table_container"></div>
-    </div>
-    
-    <div id="group_heatmap_wrapper" style="display:none;">
-      <div class="graph-toggle" style="margin-bottom:10px;">
-        <button id="group_hm_qty" class="toggle-btn active" onclick="changePivotMetric('GROUP', 'qty')">Size by Qty</button>
-        <button id="group_hm_price" class="toggle-btn" onclick="changePivotMetric('GROUP', 'price')">Size by Price</button>
-        <span style="border-left: 1px solid #444; margin: 0 8px; height: 16px;"></span>
-        <button id="group_hm_top10" class="toggle-btn" onclick="changeHeatmapTopN('GROUP', 10)">Top 10</button>
-        <button id="group_hm_top20" class="toggle-btn active" onclick="changeHeatmapTopN('GROUP', 20)">Top 20</button>
-        <button id="group_hm_top50" class="toggle-btn" onclick="changeHeatmapTopN('GROUP', 50)">Top 50</button>
+      <div style="margin-left: auto;">
+        <button id="toggle_metadata_btn_group" class="action-btn-secondary" onclick="toggleMetadataView('group')">⚙️ Manage Metadata</button>
       </div>
-      <div id="group_heatmap_container" class="heatmap-container"></div>
     </div>
     
-    <div id="group_graph_wrapper" style="display:none;">
-      <div class="graph-toggle" style="margin-bottom:10px;">
-        <button id="group_gr_qty" class="toggle-btn active" onclick="changePivotMetric('GROUP', 'qty')">Quantity</button>
-        <button id="group_gr_price" class="toggle-btn" onclick="changePivotMetric('GROUP', 'price')">Total Price (THB)</button>
+    <div id="group_metadata_placeholder"></div>
+    
+    <div id="group_content_wrapper">
+      <div id="group_table_wrapper" class="table-wrapper">
+        <div id="group_table_container"></div>
       </div>
-      <div id="group_chart_div" class="chart-container-div"></div>
-    </div>
+      
+      <div id="group_heatmap_wrapper" style="display:none;">
+        <div class="graph-toggle" style="margin-bottom:10px;">
+          <button id="group_hm_qty" class="toggle-btn active" onclick="changePivotMetric('GROUP', 'qty')">Size by Qty</button>
+          <button id="group_hm_price" class="toggle-btn" onclick="changePivotMetric('GROUP', 'price')">Size by Price</button>
+          <span style="border-left: 1px solid #444; margin: 0 8px; height: 16px;"></span>
+          <button id="group_hm_top10" class="toggle-btn" onclick="changeHeatmapTopN('GROUP', 10)">Top 10</button>
+          <button id="group_hm_top20" class="toggle-btn active" onclick="changeHeatmapTopN('GROUP', 20)">Top 20</button>
+          <button id="group_hm_top50" class="toggle-btn" onclick="changeHeatmapTopN('GROUP', 50)">Top 50</button>
+        </div>
+        <div id="group_heatmap_container" class="heatmap-container"></div>
+      </div>
+      
+      <div id="group_graph_wrapper" style="display:none;">
+        <div class="graph-toggle" style="margin-bottom:10px;">
+          <button id="group_gr_qty" class="toggle-btn active" onclick="changePivotMetric('GROUP', 'qty')">Quantity</button>
+          <button id="group_gr_price" class="toggle-btn" onclick="changePivotMetric('GROUP', 'price')">Total Price (THB)</button>
+        </div>
+        <div id="group_chart_div" class="chart-container-div"></div>
+      </div>
 
-    <div id="group_timeline_wrapper" style="display:none;">
-      <div id="group_timeline_chart_div" class="chart-container-div"></div>
+      <div id="group_timeline_wrapper" style="display:none;">
+        <div id="group_timeline_chart_div" class="chart-container-div"></div>
+      </div>
     </div>
   </div>
 
@@ -216,6 +305,7 @@
     </div>
     <div id="events_table_container" class="table-wrapper"></div>
   </div>
+
 
   <div id="shared_timeline_controls_wrapper" style="display: none;">
     <div class="view-header-actions" style="margin-top: 15px;">
@@ -369,6 +459,135 @@
             <button type="button" id="delete_btn" class="action-btn-danger" style="display: none; margin-right: auto;" onclick="deleteTransaction()">Delete</button>
             <button type="button" class="action-btn-secondary" onclick="closeModal()">Cancel</button>
             <button type="submit" id="submit_btn" class="action-btn-primary">Save Transaction</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Member Modal -->
+  <div id="member_modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Add Member</h3>
+        <button class="close-modal-btn" onclick="closeMemberModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="member_form" onsubmit="submitMemberForm(event)">
+          <input type="hidden" id="member_form_row_index">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="member_form_name">Member Name <span class="required">*</span></label>
+              <input type="text" id="member_form_name" required placeholder="Jane">
+            </div>
+            
+            <div class="form-group">
+              <label for="member_form_image">Member Image URL</label>
+              <input type="url" id="member_form_image" placeholder="https://scontent...">
+            </div>
+            
+            <div class="form-group">
+              <label for="member_form_color">Color <span class="required">*</span></label>
+              <select id="member_form_color" required></select>
+            </div>
+            
+            <div class="form-group">
+              <label for="member_form_group">Group <span class="required">*</span></label>
+              <select id="member_form_group" required onchange="handleMemberFormGroupChange()"></select>
+            </div>
+          </div>
+
+          <!-- Inline Group Fields (Shown when Group is [+ Add New Group]) -->
+          <div id="member_inline_group_fields" class="inline-form-section" style="display: none;">
+            <h4>New Group Details</h4>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="member_inline_group_name">Group Name <span class="required">*</span></label>
+                <input type="text" id="member_inline_group_name" placeholder="Eclipse">
+              </div>
+              
+              <div class="form-group">
+                <label for="member_inline_group_country">Country <span class="required">*</span></label>
+                <select id="member_inline_group_country"></select>
+              </div>
+              
+              <div class="form-group span-2">
+                <label for="member_inline_group_company">Company <span class="required">*</span></label>
+                <select id="member_inline_group_company" onchange="handleMemberInlineCompanyChange()"></select>
+              </div>
+
+              <!-- Inline New Company Field (Shown when Company is [+ Add New Company]) -->
+              <div id="member_inline_company_name_group" class="form-group span-2" style="display: none;">
+                <label for="member_inline_company_name">New Company Name <span class="required">*</span></label>
+                <input type="text" id="member_inline_company_name" placeholder="Individual">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid" style="margin-top: 15px;">
+            <div class="form-group">
+              <label for="member_form_start_date">Start Date <span class="required">*</span></label>
+              <input type="date" id="member_form_start_date" value="1001-01-01" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="member_form_end_date">End Date <span class="required">*</span></label>
+              <input type="date" id="member_form_end_date" value="9999-12-31" required>
+            </div>
+            
+            <div class="form-group span-2" style="flex-direction: row; align-items: center; gap: 8px; margin-top: 5px;">
+              <input type="checkbox" id="member_form_active" checked style="width: auto;">
+              <label for="member_form_active" style="cursor: pointer; margin-bottom: 0;">Is Active Member</label>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" id="member_delete_btn" class="action-btn-danger" style="display: none; margin-right: auto;" onclick="deleteMember()">Delete</button>
+            <button type="button" class="action-btn-secondary" onclick="closeMemberModal()">Cancel</button>
+            <button type="submit" id="member_submit_btn" class="action-btn-primary">Save Member</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Group Modal -->
+  <div id="group_modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Add Group</h3>
+        <button class="close-modal-btn" onclick="closeGroupModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="group_form" onsubmit="submitGroupForm(event)">
+          <input type="hidden" id="group_form_row_index">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="group_form_name">Group Name <span class="required">*</span></label>
+              <input type="text" id="group_form_name" required placeholder="Eclipse">
+            </div>
+            
+            <div class="form-group">
+              <label for="group_form_country">Country <span class="required">*</span></label>
+              <select id="group_form_country" required></select>
+            </div>
+            
+            <div class="form-group span-2">
+              <label for="group_form_company">Company <span class="required">*</span></label>
+              <select id="group_form_company" required onchange="handleGroupFormCompanyChange()"></select>
+            </div>
+
+            <!-- Inline New Company Field (Shown when Company is [+ Add New Company]) -->
+            <div id="group_inline_company_name_group" class="form-group span-2" style="display: none;">
+              <label for="group_form_new_company">New Company Name <span class="required">*</span></label>
+              <input type="text" id="group_form_new_company" placeholder="Individual">
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" id="group_delete_btn" class="action-btn-danger" style="display: none; margin-right: auto;" onclick="deleteGroup()">Delete</button>
+            <button type="button" class="action-btn-secondary" onclick="closeGroupModal()">Cancel</button>
+            <button type="submit" id="group_submit_btn" class="action-btn-primary">Save Group</button>
           </div>
         </form>
       </div>
