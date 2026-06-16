@@ -71,6 +71,7 @@
   google.charts.setOnLoadCallback(initializeDashboardEngine);
 
   let METADATA = {};
+  let SELECTED_ROW_INDEX = null;
 
   function initializeDashboardEngine() {
     try {
@@ -238,6 +239,7 @@
   }
 
   function runFilterPipelineCalculation() {
+    resetSelection();
     const yr = document.getElementById('filter_year').value;
     const mem = document.getElementById('filter_member').value;
     const grp = document.getElementById('filter_group').value;
@@ -453,13 +455,13 @@
       let sortClass = RAW_SORT.column === h ? (RAW_SORT.asc ? 'class="sort-asc"' : 'class="sort-desc"') : '';
       htmlBuffer.push('<th ' + sortClass + ' onclick="handleRawSort(\'' + h + '\')">' + h + '</th>');
     });
-    htmlBuffer.push('<th>Actions</th>');
     htmlBuffer.push("</tr></thead><tbody>");
 
     const renderLimit = Math.min(totalRecords, 200);
     for (let i = 0; i < renderLimit; i++) {
       let row = FILTERED_DATA[i];
-      htmlBuffer.push("<tr>");
+      let rowSelectedClass = SELECTED_ROW_INDEX === i ? 'class="selected-row"' : '';
+      htmlBuffer.push('<tr ' + rowSelectedClass + ' onclick="selectRow(event, ' + i + ')" ondblclick="openEditModal(null, ' + i + ')">');
       REORDERED_HEADERS.forEach(h => {
         let val = row[h] !== undefined ? row[h] : '';
         
@@ -482,7 +484,6 @@
           htmlBuffer.push('<td ' + inlineStyle + '>' + val + '</td>');
         }
       });
-      htmlBuffer.push('<td><button class="edit-row-btn" onclick="openEditModal(event, ' + i + ')">✏️ Edit</button></td>');
       htmlBuffer.push("</tr>");
     }
     htmlBuffer.push("</tbody></table>");
@@ -1218,6 +1219,10 @@
     document.getElementById('modal_title').innerText = "Add Transaction";
     document.getElementById('form_quantity').value = 1; // Explicitly set default quantity to 1
     
+    // Hide delete button
+    const deleteBtn = document.getElementById('delete_btn');
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    
     // Set date default to today in local timezone
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -1240,6 +1245,10 @@
     
     document.getElementById('modal_title').innerText = "Edit Transaction";
     document.getElementById('form_row_index').value = record._rowIndex || "";
+    
+    // Show delete button
+    const deleteBtn = document.getElementById('delete_btn');
+    if (deleteBtn) deleteBtn.style.display = 'inline-block';
     
     document.getElementById('form_member').value = record.Member || "";
     document.getElementById('form_date').value = record.Date || "";
@@ -1321,5 +1330,107 @@
         }
       })
       .saveTransaction(rowData, rowIndex ? parseInt(rowIndex) : null);
+  }
+
+  function selectRow(event, index) {
+    if (event.target.classList.contains('raw-clickable-cell') || 
+        event.target.classList.contains('image-link') || 
+        event.target.tagName === 'A' || 
+        event.target.tagName === 'SPAN') {
+      return;
+    }
+    
+    SELECTED_ROW_INDEX = index;
+    
+    const tbody = event.currentTarget.parentNode;
+    const rows = tbody.getElementsByTagName('tr');
+    for (let i = 0; i < rows.length; i++) {
+      rows[i].classList.remove('selected-row');
+    }
+    event.currentTarget.classList.add('selected-row');
+    
+    const editBtn = document.getElementById('global_edit_btn');
+    if (editBtn) {
+      editBtn.disabled = false;
+      editBtn.style.opacity = '1';
+      editBtn.style.cursor = 'pointer';
+      editBtn.title = "Edit selected transaction";
+    }
+  }
+
+  function resetSelection() {
+    SELECTED_ROW_INDEX = null;
+    const editBtn = document.getElementById('global_edit_btn');
+    if (editBtn) {
+      editBtn.disabled = true;
+      editBtn.style.opacity = '0.4';
+      editBtn.style.cursor = 'not-allowed';
+      editBtn.title = "Select a row to edit";
+    }
+  }
+
+  function openSelectedEditModal() {
+    if (SELECTED_ROW_INDEX !== null) {
+      openEditModal(null, SELECTED_ROW_INDEX);
+    }
+  }
+
+  function deleteTransaction() {
+    const rowIndex = document.getElementById('form_row_index').value;
+    if (!rowIndex) return;
+    
+    if (!confirm("Are you sure you want to delete this transaction from Google Sheets?")) return;
+    
+    const deleteBtn = document.getElementById('delete_btn');
+    const saveBtn = document.getElementById('submit_btn');
+    if (deleteBtn) {
+      deleteBtn.disabled = true;
+      deleteBtn.innerText = "Deleting...";
+    }
+    if (saveBtn) saveBtn.disabled = true;
+    
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          closeModal();
+          google.script.run
+            .withSuccessHandler(function(sheetData) {
+              ALL_DATA = sheetData.rows;
+              HEADERS = sheetData.headers;
+              applyFilters();
+              
+              if (deleteBtn) {
+                deleteBtn.disabled = false;
+                deleteBtn.innerText = "Delete";
+              }
+              if (saveBtn) saveBtn.disabled = false;
+            })
+            .withFailureHandler(function(err) {
+              alert("Transaction deleted, but failed to refresh view: " + err.message);
+              if (deleteBtn) {
+                deleteBtn.disabled = false;
+                deleteBtn.innerText = "Delete";
+              }
+              if (saveBtn) saveBtn.disabled = false;
+            })
+            .getSheetData();
+        } else {
+          alert("Error deleting: " + response.error);
+          if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.innerText = "Delete";
+          }
+          if (saveBtn) saveBtn.disabled = false;
+        }
+      })
+      .withFailureHandler(function(err) {
+        alert("Connection failure: " + err.message);
+        if (deleteBtn) {
+          deleteBtn.disabled = false;
+          deleteBtn.innerText = "Delete";
+        }
+        if (saveBtn) saveBtn.disabled = false;
+      })
+      .deleteTransactionRow(parseInt(rowIndex));
   }
 </script>

@@ -155,6 +155,21 @@ function copyFormulaForNewRow(formula, lastRowIndex, newRowIndex) {
   return formula.replace(regex, '$1' + newRowIndex);
 }
 
+function deleteTransactionRow(rowIndex) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getActiveSheet();
+    
+    if (rowIndex) {
+      sheet.deleteRow(rowIndex);
+      return { success: true };
+    }
+    return { success: false, error: "Missing row index." };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
