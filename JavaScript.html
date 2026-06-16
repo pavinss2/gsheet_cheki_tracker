@@ -1308,28 +1308,33 @@
       .withSuccessHandler(function(response) {
         if (response.success) {
           closeModal();
-          // Load fresh data in-place without page reload to avoid Apps Script frame crash
-          google.script.run
-            .withSuccessHandler(function(sheetData) {
-              ALL_DATA = sheetData.rows;
-              HEADERS = sheetData.headers;
-              applyFilters(); // Re-run pipeline and render views in-place
-              
-              if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerText = "Save Transaction";
-              }
-            })
-            .withFailureHandler(function(err) {
-              alert("Transaction saved, but failed to refresh view: " + err.message);
-              if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerText = "Save Transaction";
-              }
-            })
-            .getSheetData();
+          
+          var newRow = response.row;
+          if (rowIndex) {
+            // Edit mode: find and replace in ALL_DATA
+            var targetIdx = ALL_DATA.findIndex(function(r) { return r._rowIndex === newRow._rowIndex; });
+            if (targetIdx !== -1) {
+              ALL_DATA[targetIdx] = newRow;
+            }
+          } else {
+            // Add mode: increment _rowIndex of all existing rows first
+            ALL_DATA.forEach(function(r) {
+              r._rowIndex++;
+            });
+            // Prepend new row
+            ALL_DATA.unshift(newRow);
+          }
+          
+          applyFilters();
+          hideLoading();
+          
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = "Save Transaction";
+          }
         } else {
           alert("Error saving: " + response.error);
+          hideLoading();
           if (saveBtn) {
             saveBtn.disabled = false;
             saveBtn.innerText = "Save Transaction";
@@ -1404,29 +1409,29 @@
       .withSuccessHandler(function(response) {
         if (response.success) {
           closeModal();
-          google.script.run
-            .withSuccessHandler(function(sheetData) {
-              ALL_DATA = sheetData.rows;
-              HEADERS = sheetData.headers;
-              applyFilters();
-              
-              if (deleteBtn) {
-                deleteBtn.disabled = false;
-                deleteBtn.innerText = "Delete";
-              }
-              if (saveBtn) saveBtn.disabled = false;
-            })
-            .withFailureHandler(function(err) {
-              alert("Transaction deleted, but failed to refresh view: " + err.message);
-              if (deleteBtn) {
-                deleteBtn.disabled = false;
-                deleteBtn.innerText = "Delete";
-              }
-              if (saveBtn) saveBtn.disabled = false;
-            })
-            .getSheetData();
+          
+          var deletedRowIndex = parseInt(rowIndex);
+          // Remove the deleted row from ALL_DATA
+          ALL_DATA = ALL_DATA.filter(function(r) { return r._rowIndex !== deletedRowIndex; });
+          
+          // Adjust _rowIndex of all rows shifted up
+          ALL_DATA.forEach(function(r) {
+            if (r._rowIndex > deletedRowIndex) {
+              r._rowIndex--;
+            }
+          });
+          
+          applyFilters();
+          hideLoading();
+          
+          if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.innerText = "Delete";
+          }
+          if (saveBtn) saveBtn.disabled = false;
         } else {
           alert("Error deleting: " + response.error);
+          hideLoading();
           if (deleteBtn) {
             deleteBtn.disabled = false;
             deleteBtn.innerText = "Delete";
@@ -1733,19 +1738,22 @@
       .withSuccessHandler(function(response) {
         if (response.success) {
           closeMemberModal();
-          google.script.run
-            .withSuccessHandler(function(freshMetadata) {
-              METADATA = freshMetadata;
-              renderMetadataTables();
-              hideLoading();
-              if (deleteBtn) deleteBtn.disabled = false;
-            })
-            .withFailureHandler(function(err) {
-              alert('Member deleted, but failed to reload lists: ' + err.message);
-              hideLoading();
-              if (deleteBtn) deleteBtn.disabled = false;
-            })
-            .getMetadata();
+          
+          var deletedRowIndex = parseInt(rowIndexVal);
+          // Remove from METADATA.members
+          METADATA.members = METADATA.members.filter(function(m) { return m._rowIndex !== deletedRowIndex; });
+          
+          // Adjust _rowIndex of all members shifted up
+          METADATA.members.forEach(function(m) {
+            if (m._rowIndex > deletedRowIndex) {
+              m._rowIndex--;
+            }
+          });
+          
+          renderMetadataTables();
+          hideLoading();
+          
+          if (deleteBtn) deleteBtn.disabled = false;
         } else {
           alert('Error deleting: ' + response.error);
           hideLoading();
@@ -1776,19 +1784,36 @@
       .withSuccessHandler(function(response) {
         if (response.success) {
           closeGroupModal();
-          google.script.run
-            .withSuccessHandler(function(freshMetadata) {
-              METADATA = freshMetadata;
-              renderMetadataTables();
-              hideLoading();
-              if (deleteBtn) deleteBtn.disabled = false;
-            })
-            .withFailureHandler(function(err) {
-              alert('Group deleted, but failed to reload lists: ' + err.message);
-              hideLoading();
-              if (deleteBtn) deleteBtn.disabled = false;
-            })
-            .getMetadata();
+          
+          var deletedRowIndex = parseInt(rowIndexVal);
+          
+          // Find deleted group name
+          var deletedGroup = METADATA.groups.find(function(g) { return g._rowIndex === deletedRowIndex; });
+          var deletedGroupName = deletedGroup ? deletedGroup.group : "";
+          
+          // Remove from METADATA.groups
+          METADATA.groups = METADATA.groups.filter(function(g) { return g._rowIndex !== deletedRowIndex; });
+          
+          // Adjust _rowIndex of all groups shifted up
+          METADATA.groups.forEach(function(g) {
+            if (g._rowIndex > deletedRowIndex) {
+              g._rowIndex--;
+            }
+          });
+          
+          // Update members to group "N/A" client-side
+          if (deletedGroupName && METADATA.members) {
+            METADATA.members.forEach(function(m) {
+              if (m.group && m.group.toLowerCase() === deletedGroupName.toLowerCase()) {
+                m.group = "N/A";
+              }
+            });
+          }
+          
+          renderMetadataTables();
+          hideLoading();
+          
+          if (deleteBtn) deleteBtn.disabled = false;
         } else {
           alert('Error deleting: ' + response.error);
           hideLoading();
@@ -2019,25 +2044,24 @@
       .withSuccessHandler(function(response) {
         if (response.success) {
           closeMemberModal();
-          google.script.run
-            .withSuccessHandler(function(freshMetadata) {
-              METADATA = freshMetadata;
-              renderMetadataTables();
-              hideLoading();
-              if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerText = 'Save Member';
-              }
-            })
-            .withFailureHandler(function(err) {
-              alert('Member saved, but failed to reload lists: ' + err.message);
-              hideLoading();
-              if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerText = 'Save Member';
-              }
-            })
-            .getMetadata();
+          
+          var newMember = response.member;
+          if (isEditMode) {
+            var idx = METADATA.members.findIndex(function(m) { return m._rowIndex === newMember._rowIndex; });
+            if (idx !== -1) {
+              METADATA.members[idx] = newMember;
+            }
+          } else {
+            METADATA.members.push(newMember);
+          }
+          
+          renderMetadataTables();
+          hideLoading();
+          
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = 'Save Member';
+          }
         } else {
           alert('Error saving: ' + response.error);
           hideLoading();
@@ -2093,25 +2117,34 @@
       .withSuccessHandler(function(response) {
         if (response.success) {
           closeGroupModal();
-          google.script.run
-            .withSuccessHandler(function(freshMetadata) {
-              METADATA = freshMetadata;
-              renderMetadataTables();
-              hideLoading();
-              if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerText = 'Save Group';
+          
+          var newGroupObj = response.group;
+          if (isEditMode) {
+            var idx = METADATA.groups.findIndex(function(g) { return g._rowIndex === newGroupObj._rowIndex; });
+            if (idx !== -1) {
+              var oldGroupName = METADATA.groups[idx].group;
+              METADATA.groups[idx] = newGroupObj;
+              
+              // Cascading update to matching members client-side
+              if (oldGroupName && newGroupObj.group && oldGroupName.toLowerCase() !== newGroupObj.group.toLowerCase() && METADATA.members) {
+                METADATA.members.forEach(function(m) {
+                  if (m.group && m.group.toLowerCase() === oldGroupName.toLowerCase()) {
+                    m.group = newGroupObj.group;
+                  }
+                });
               }
-            })
-            .withFailureHandler(function(err) {
-              alert('Group saved, but failed to reload lists: ' + err.message);
-              hideLoading();
-              if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerText = 'Save Group';
-              }
-            })
-            .getMetadata();
+            }
+          } else {
+            METADATA.groups.push(newGroupObj);
+          }
+          
+          renderMetadataTables();
+          hideLoading();
+          
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = 'Save Group';
+          }
         } else {
           alert('Error saving: ' + response.error);
           hideLoading();

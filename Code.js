@@ -91,8 +91,7 @@ function saveTransaction(rowData, rowIndex) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName("fact_cheki_transaction") || ss.getActiveSheet();
-    var data = sheet.getDataRange().getValues();
-    var headers = data[0];
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     
     var addedOnColIdx = headers.indexOf("added_on");
     
@@ -181,7 +180,26 @@ function saveTransaction(rowData, rowIndex) {
       writeAdminLog("ADD_TRANSACTION", "Added transaction: Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity + ", Price=" + rowData['Total Price (THB)']);
     }
     
-    return { success: true };
+    // Fetch and return the newly saved or updated row
+    SpreadsheetApp.flush(); // Ensure formulas and values are calculated/flushed to sheet
+    var targetRowIdx = rowIndex || 2;
+    var rowValuesFromSheet = sheet.getRange(targetRowIdx, 1, 1, headers.length).getValues()[0];
+    var tz = ss.getSpreadsheetTimeZone();
+    var obj = { _rowIndex: targetRowIdx };
+    headers.forEach(function(header, index) {
+      var val = rowValuesFromSheet[index];
+      if (val instanceof Date) {
+        if (header === 'added_on' || header === 'timestamp') {
+          obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd HH:mm:ss");
+        } else {
+          obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd");
+        }
+      } else {
+        obj[header] = val;
+      }
+    });
+    
+    return { success: true, row: obj };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -279,8 +297,7 @@ function addMemberMetadata(memberData) {
       return { success: false, error: "dim_member sheet not found" };
     }
     
-    var data = sheet.getDataRange().getValues();
-    var headers = data[0];
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     var lastRowIdx = sheet.getLastRow();
     
     // Read formulas from the preceding row if it exists
@@ -314,7 +331,22 @@ function addMemberMetadata(memberData) {
     
     sheet.appendRow(rowValues);
     writeAdminLog("ADD_MEMBER", "Added member: Name=" + memberData.member_name + ", Group=" + memberData.group);
-    return { success: true };
+    
+    // Return the newly created member object
+    SpreadsheetApp.flush();
+    var newRowIdx = sheet.getLastRow();
+    var finalRowValues = sheet.getRange(newRowIdx, 1, 1, headers.length).getValues()[0];
+    var tz = ss.getSpreadsheetTimeZone();
+    var obj = { _rowIndex: newRowIdx };
+    headers.forEach(function(header, index) {
+      var val = finalRowValues[index];
+      if (val instanceof Date) {
+        obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd");
+      } else {
+        obj[header] = val;
+      }
+    });
+    return { success: true, member: obj };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -324,7 +356,25 @@ function addGroupMetadata(groupData) {
   try {
     ensureCompanyAndGroup(groupData.group, groupData.country, groupData.company);
     writeAdminLog("ADD_GROUP", "Added group: Name=" + groupData.group + ", Company=" + groupData.company);
-    return { success: true };
+    
+    // Return the newly added group object
+    SpreadsheetApp.flush();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var groupSheet = ss.getSheetByName("dim_group");
+    var newRowIdx = groupSheet.getLastRow();
+    var headers = groupSheet.getRange(1, 1, 1, groupSheet.getLastColumn()).getValues()[0];
+    var finalRowValues = groupSheet.getRange(newRowIdx, 1, 1, headers.length).getValues()[0];
+    var tz = ss.getSpreadsheetTimeZone();
+    var obj = { _rowIndex: newRowIdx };
+    headers.forEach(function(header, index) {
+      var val = finalRowValues[index];
+      if (val instanceof Date) {
+        obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd");
+      } else {
+        obj[header] = val;
+      }
+    });
+    return { success: true, group: obj };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -345,8 +395,7 @@ function updateMemberMetadata(rowIndex, memberData) {
       return { success: false, error: "dim_member sheet not found" };
     }
     
-    var data = sheet.getDataRange().getValues();
-    var headers = data[0];
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     
     // Read formulas from row rowIndex
     var existingFormulas = sheet.getRange(rowIndex, 1, 1, headers.length).getFormulas()[0];
@@ -368,7 +417,21 @@ function updateMemberMetadata(rowIndex, memberData) {
     
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
     writeAdminLog("EDIT_MEMBER", "Updated member at row " + rowIndex + ": Name=" + memberData.member_name + ", Group=" + memberData.group);
-    return { success: true };
+    
+    // Return the updated member object
+    SpreadsheetApp.flush();
+    var finalRowValues = sheet.getRange(rowIndex, 1, 1, headers.length).getValues()[0];
+    var tz = ss.getSpreadsheetTimeZone();
+    var obj = { _rowIndex: rowIndex };
+    headers.forEach(function(header, index) {
+      var val = finalRowValues[index];
+      if (val instanceof Date) {
+        obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd");
+      } else {
+        obj[header] = val;
+      }
+    });
+    return { success: true, member: obj };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -381,7 +444,7 @@ function deleteMemberMetadata(rowIndex) {
     if (!sheet) return { success: false, error: "dim_member sheet not found" };
     
     if (rowIndex) {
-      var headers = sheet.getDataRange().getValues()[0];
+      var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
       var nameColIdx = headers.indexOf("member_name");
       var memberName = "";
       if (nameColIdx > -1) {
@@ -443,7 +506,11 @@ function updateGroupMetadata(rowIndex, groupData) {
       }
     }
     
-    return { success: true };
+    // Return the updated group object
+    SpreadsheetApp.flush();
+    var finalRowValues = groupSheet.getRange(rowIndex, 1, 1, 3).getValues()[0];
+    var obj = { _rowIndex: rowIndex, group: finalRowValues[0], country: finalRowValues[1], company: finalRowValues[2] };
+    return { success: true, group: obj };
   } catch (e) {
     return { success: false, error: e.message };
   }
