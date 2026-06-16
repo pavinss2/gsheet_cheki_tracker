@@ -1,0 +1,8 @@
+# Ignore all files
+**/*
+
+# Allow Apps Script files
+!Code.js
+!Autofill.js
+!Index.html
+!appsscript.json

@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Clasp local credentials (global config is usually in ~/.clasprc.json, but keep local safe)
+.clasprc.json
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

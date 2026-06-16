@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Summary Analytics Dashboard</title>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 15px; background-color: #121212; color: #e0e0e0; }
+    h1 { color: #8ab4f8; margin-bottom: 5px; font-weight: 500; font-size: 24px; }
+    
+    /* Global KPI Aggregations Widget */
+    .kpi-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+    .kpi-card { background: #1e1e1e; padding: 13px 13px 13px 13px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); border-left: 4px solid #8ab4f8; min-width: 0; }
+    .kpi-card.accent-purple { border-left-color: #bb86fc; }
+    .kpi-card.accent-green { border-left-color: #03dac6; }
+    .kpi-card.accent-orange { border-left-color: #ffb74d; }
+    .kpi-card.accent-teal { border-left-color: #00e5ff; }
+    .kpi-card.accent-pink { border-left-color: #ff4081; }
+    .kpi-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #aaaaaa; font-weight: bold; margin-bottom: 5px; }
+    .kpi-value { font-size: 20px; font-weight: 600; color: #ffffff; margin-bottom: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #kpi_total_qty::after { content: " pcs"; font-size: 12px; color: #888888; font-weight: 400; }
+    .kpi-subtext { font-size: 12px; color: #aaaaaa; line-height: 1.4; }
+    .kpi-subtext ol { margin: 3px 0 0 15px; padding: 0; }
+    
+    .kpi-dual-row { display: flex; margin-bottom: 5px; font-size: 13px; color: #aaaaaa; }
+    .kpi-dual-row:last-child { margin-bottom: 0; }
+    .kpi-dual-row span { font-weight: 600; font-size: 13px; color: #ffffff; }
+
+    /* Control Panel Box Grid Setup */
+    .filter-panel { background: #1e1e1e; padding: 15px 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; min-width: 120px; flex: 1; }
+    .filter-group label { font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #aaaaaa; text-transform: uppercase; }
+    .filter-group select, .filter-group input { padding: 8px; border: 1px solid #333333; border-radius: 4px; font-size: 13px; outline: none; background: #2d2d2d; color: #ffffff; width: 100%; box-sizing: border-box; }
+
+    /* Interactive Filter Breadcrumb Tokens */
+    .active-filters-info { display: flex; flex-wrap: wrap; align-items: center; width: 100%; font-size: 13px; color: #e0e0e0; margin-top: 5px; background: #2d2d2d; padding: 8px 12px; border-radius: 6px; gap: 8px; border: 1px dashed #444444; }
+    .filter-token { display: inline-flex; align-items: center; background: #1a365d; color: #8ab4f8; padding: 4px 8px; border-radius: 16px; font-weight: 500; font-size: 12px; gap: 6px; }
+    .clear-token-btn { background: none; border: none; color: #8ab4f8; cursor: pointer; font-weight: bold; font-size: 14px; padding: 0 2px; line-height: 1; }
+    .clear-token-btn:hover { color: #f44336; }
+
+    /* Layout Tab Controllers Navigation */
+    .tab-container { display: flex; border-bottom: 2px solid #333333; margin-bottom: 0px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tab-button { background: none; border: none; padding: 12px 16px; font-size: 14px; cursor: pointer; color: #aaaaaa; font-weight: 500; border-bottom: 3px solid transparent; transition: all 0.15s; white-space: nowrap; flex: 1; text-align: center; }
+    .tab-button:hover { color: #8ab4f8; background-color: #252525; }
+    .tab-button.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
+    .tab-content { display: none; background: #1e1e1e; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    .tab-content.active { display: block; }
+    
+    /* Structural Grids Data Output Layout */
+    .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; background-color: #1e1e1e; }
+    th { background-color: #2d2d2d; color: #ffffff; font-weight: 600; padding: 12px 10px; border-bottom: 2px solid #444444; white-space: nowrap; cursor: pointer; user-select: none; position: relative; padding-right: 20px; }
+    th:hover { background-color: #353535; }
+    th::after { content: ' ↕'; font-size: 10px; color: #666666; position: absolute; right: 5px; }
+    th.sort-asc::after { content: ' ▲'; color: #8ab4f8; }
+    th.sort-desc::after { content: ' ▼'; color: #8ab4f8; }
+    td { padding: 10px; border-bottom: 1px solid #333333; white-space: nowrap; color: #e0e0e0; }
+    
+    .thin-rank-col { width: 1%; white-space: nowrap; text-align: center; padding-right: 10px; }
+    th.thin-rank-col::after { content: '' !important; } 
+    
+    .raw-clickable-cell { cursor: pointer; transition: background 0.1s; }
+    .raw-clickable-cell:hover { background-color: #1a365d !important; color: #8ab4f8 !important; font-weight: 500; }
+    
+    .image-link { color: #8ab4f8; text-decoration: none; font-weight: 500; }
+    .image-link:hover { text-decoration: underline; }
+    tr:hover { background-color: #252525; }
+    
+    .graph-toggle { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 15px; background: #2d2d2d; padding: 4px; border-radius: 6px; width: fit-content; align-items: center; }
+    .toggle-btn { background: transparent; border: none; padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; color: #aaaaaa; }
+    .toggle-btn.active { background: #1e1e1e; color: #8ab4f8; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+    
+    .chart-container-div { width: 100%; min-height: 400px; height: auto; margin-top: 15px; }
+    .heatmap-container { width: 100%; min-height: 450px; margin-top: 15px; pointer-events: none; }
+    .pagination-alert { background: #3a2d0f; color: #ffe082; padding: 8px 12px; margin-top: 10px; border-radius: 4px; font-size: 12px; display: inline-block; border: 1px solid #6d4c00; }
+    
+    .view-header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+
+    /* Subfilters Placed Below Graph Element Panel Container layout rules */
+    .multiselect-panel { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; background: #1e1e1e; padding: 12px; border-radius: 6px; border: 1px solid #333333; }
+    .multiselect-box { flex: 1; min-width: 240px; display: flex; flex-direction: column; }
+    .multiselect-header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .multiselect-box h4 { margin: 0; font-size: 12px; text-transform: uppercase; color: #aaaaaa; }
+    .sub-filter-utilities { display: flex; gap: 8px; }
+    .sub-util-btn { background: none; border: none; color: #8ab4f8; cursor: pointer; font-size: 11px; font-weight: 600; padding: 2px 4px; border-radius: 3px; }
+    .sub-util-btn:hover { background-color: #1a365d; text-decoration: underline; }
+    
+    .subfilter-search-input { width: 100%; padding: 6px 8px; border: 1px solid #333333; border-radius: 4px; font-size: 12px; margin-bottom: 6px; background-color: #2d2d2d; color: #ffffff; outline: none; box-sizing: border-box; }
+    .subfilter-search-input:focus { border-color: #8ab4f8; }
+
+    .checkbox-container { max-height: 110px; overflow-y: auto; background: #2d2d2d; border: 1px solid #333333; padding: 6px; border-radius: 4px; display: flex; flex-direction: column; gap: 4px; }
+    .checkbox-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #e0e0e0; cursor: pointer; }
+    .checkbox-item input { cursor: pointer; margin: 0; }
+
+    .custom-graph-tooltip { padding: 10px; background: #2d2d2d; border: 1px solid #444444; border-radius: 6px; font-family: sans-serif; font-size: 12px; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.5); color: #e0e0e0; min-width: 120px; }
+    .custom-graph-tooltip b { color: #ffffff; font-size: 13px; display: block; margin-bottom: 4px; }
+
+    @media (max-width: 600px) {
+      body { margin: 10px; }
+      h1 { font-size: 20px; margin-bottom: 15px; }
+      
+      /* Force exactly 3 filter elements per row (making 6 fit perfectly in exactly 2 rows) */
+      .filter-panel { padding: 12px; gap: 8px; display: flex; flex-wrap: wrap; }
+      .filter-group { flex: none; width: calc(33.333% - 6px); min-width: 0; }
+      .filter-group label { font-size: 9px; margin-bottom: 3px; }
+      .filter-group select { padding: 6px 4px; font-size: 11px; }
+
+      .kpi-container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .tab-button { padding: 10px 4px; font-size: 11px; }
+      .chart-container-div, .heatmap-container { min-height: 320px; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Cheki Database</h1>
+  <div class="kpi-container">
+    <div class="kpi-card">
+      <div class="kpi-title">Total Cheki</div>
+      <div id="kpi_total_qty" class="kpi-value">0</div>
+      <div id="kpi_total_qty_subtext" class="kpi-subtext">฿ 0</div>
+    </div>
+    <div class="kpi-card accent-purple">
+      <div class="kpi-title">Unique Idol Count</div>
+      <div style="margin-top: 8px;">
+        <div class="kpi-dual-row"><span id="kpi_unique_members">0</span>&nbsp;Members</div>
+        <div class="kpi-dual-row"><span id="kpi_unique_groups">0</span>&nbsp;Groups</div>
+      </div>
+    </div>
+    <div class="kpi-card accent-green">
+      <div class="kpi-title">Top 3 Members</div>
+      <div id="kpi_top_members" class="kpi-subtext">Calculating variables...</div>
+    </div>
+    <div class="kpi-card accent-orange">
+      <div class="kpi-title">Top 3 Groups</div>
+      <div id="kpi_top_groups" class="kpi-subtext">Calculating variables...</div>
+    </div>
+    <div class="kpi-card accent-teal">
+      <div class="kpi-title">Types</div>
+      <div id="kpi_top_types" class="kpi-subtext">Calculating variables...</div>
+    </div>
+    <div class="kpi-card accent-pink">
+      <div class="kpi-title">Locations</div>
+      <div id="kpi_top_locations" class="kpi-subtext">Calculating variables...</div>
+    </div>
+  </div>
+
+  <div class="filter-panel">
+    <div class="filter-group">
+      <label>Year</label>
+      <select id="filter_year" onchange="applyFilters()"><option value="">-- All Years --</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Group</label>
+      <select id="filter_group" onchange="applyFilters()"><option value="">-- All Groups --</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Color</label>
+      <select id="filter_color" onchange="applyFilters()"><option value="">-- All Colors --</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Member</label>
+      <select id="filter_member" onchange="applyFilters()"><option value="">-- All Members --</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Nationality</label>
+      <select id="filter_nationality" onchange="applyFilters()"><option value="">-- All Nationalities --</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Company</label>
+      <select id="filter_company" onchange="applyFilters()"><option value="">-- All Companies --</option></select>
+    </div>
+
+    <div id="cell_filter_status" class="active-filters-info" style="display: none;">
+      <span>Active Row Drilldowns:</span>
+      <div id="token_container" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+    </div>
+  </div>
+
+  <div class="tab-container">
+    <button class="tab-button active" onclick="switchTab(event, 'raw_data_tab')">Raw Data</button>
+    <button class="tab-button" onclick="switchTab(event, 'member_view_tab')">Member View</button>
+    <button class="tab-button" onclick="switchTab(event, 'group_view_tab')">Group View</button>
+    <button class="tab-button" onclick="switchTab(event, 'color_view_tab')">Color View</button>
+    <button class="tab-button" onclick="switchTab(event, 'events_view_tab')">Events</button>
+  </div>
+
+  <div id="raw_data_tab" class="tab-content active">
+    <div id="raw_table_container" class="table-wrapper"></div>
+  </div>
+
+  <div id="member_view_tab" class="tab-content">
+    <div class="view-header-actions">
+      <div class="graph-toggle">
+        <button id="member_mode_table" class="toggle-btn active" onclick="togglePivotMode('MEMBER', 'TABLE')">Table</button>
+        <button id="member_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'HEATMAP')">Heatmap</button>
+        <button id="member_mode_graph" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'GRAPH')">Bar Graph</button>
+        <button id="member_mode_timeline" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'TIMELINE')">Timeline</button>
+      </div>
+    </div>
+    
+    <div id="member_table_wrapper" class="table-wrapper">
+      <div id="member_table_container"></div>
+    </div>
+    
+    <div id="member_heatmap_wrapper" style="display:none;">
+      <div class="graph-toggle" style="margin-bottom:10px;">
+        <button id="member_hm_qty" class="toggle-btn active" onclick="changePivotMetric('MEMBER', 'qty')">Size by Qty</button>
+        <button id="member_hm_price" class="toggle-btn" onclick="changePivotMetric('MEMBER', 'price')">Size by Price</button>
+        <span style="border-left: 1px solid #444; margin: 0 8px; height: 16px;"></span>
+        <button id="member_hm_top10" class="toggle-btn" onclick="changeHeatmapTopN('MEMBER', 10)">Top 10</button>
+        <button id="member_hm_top20" class="toggle-btn active" onclick="changeHeatmapTopN('MEMBER', 20)">Top 20</button>
+        <button id="member_hm_top50" class="toggle-btn" onclick="changeHeatmapTopN('MEMBER', 50)">Top 50</button>
+      </div>
+      <div id="member_heatmap_container" class="heatmap-container"></div>
+    </div>
+    
+    <div id="member_graph_wrapper" style="display:none;">
+      <div class="graph-toggle" style="margin-bottom:10px;">
+        <button id="member_gr_qty" class="toggle-btn active" onclick="changePivotMetric('MEMBER', 'qty')">Quantity</button>
+        <button id="member_gr_price" class="toggle-btn" onclick="changePivotMetric('MEMBER', 'price')">Total Price (THB)</button>
+      </div>
+      <div id="member_chart_div" class="chart-container-div"></div>
+    </div>
+
+    <div id="member_timeline_wrapper" style="display:none;">
+      <div id="member_timeline_chart_div" class="chart-container-div"></div>
+    </div>
+  </div>
+
+  <div id="group_view_tab" class="tab-content">
+    <div class="view-header-actions">
+      <div class="graph-toggle">
+        <button id="group_mode_table" class="toggle-btn active" onclick="togglePivotMode('GROUP', 'TABLE')">Table</button>
+        <button id="group_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('GROUP', 'HEATMAP')">Heatmap</button>
+        <button id="group_mode_graph" class="toggle-btn" onclick="togglePivotMode('GROUP', 'GRAPH')">Bar Graph</button>
+        <button id="group_mode_timeline" class="toggle-btn" onclick="togglePivotMode('GROUP', 'TIMELINE')">Timeline</button>
+      </div>
+    </div>
+    
+    <div id="group_table_wrapper" class="table-wrapper">
+      <div id="group_table_container"></div>
+    </div>
+    
+    <div id="group_heatmap_wrapper" style="display:none;">
+      <div class="graph-toggle" style="margin-bottom:10px;">
+        <button id="group_hm_qty" class="toggle-btn active" onclick="changePivotMetric('GROUP', 'qty')">Size by Qty</button>
+        <button id="group_hm_price" class="toggle-btn" onclick="changePivotMetric('GROUP', 'price')">Size by Price</button>
+        <span style="border-left: 1px solid #444; margin: 0 8px; height: 16px;"></span>
+        <button id="group_hm_top10" class="toggle-btn" onclick="changeHeatmapTopN('GROUP', 10)">Top 10</button>
+        <button id="group_hm_top20" class="toggle-btn active" onclick="changeHeatmapTopN('GROUP', 20)">Top 20</button>
+        <button id="group_hm_top50" class="toggle-btn" onclick="changeHeatmapTopN('GROUP', 50)">Top 50</button>
+      </div>
+      <div id="group_heatmap_container" class="heatmap-container"></div>
+    </div>
+    
+    <div id="group_graph_wrapper" style="display:none;">
+      <div class="graph-toggle" style="margin-bottom:10px;">
+        <button id="group_gr_qty" class="toggle-btn active" onclick="changePivotMetric('GROUP', 'qty')">Quantity</button>
+        <button id="group_gr_price" class="toggle-btn" onclick="changePivotMetric('GROUP', 'price')">Total Price (THB)</button>
+      </div>
+      <div id="group_chart_div" class="chart-container-div"></div>
+    </div>
+
+    <div id="group_timeline_wrapper" style="display:none;">
+      <div id="group_timeline_chart_div" class="chart-container-div"></div>
+    </div>
+  </div>
+
+  <div id="color_view_tab" class="tab-content">
+    <div class="view-header-actions">
+      <div class="graph-toggle">
+        <button id="color_mode_table" class="toggle-btn active" onclick="togglePivotMode('COLOR', 'TABLE')">Table</button>
+        <button id="color_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('COLOR', 'HEATMAP')">Heatmap</button>
+        <button id="color_mode_graph" class="toggle-btn" onclick="togglePivotMode('COLOR', 'GRAPH')">Bar Graph</button>
+        <button id="color_mode_timeline" class="toggle-btn" onclick="togglePivotMode('COLOR', 'TIMELINE')">Timeline</button>
+      </div>
+    </div>
+    
+    <div id="color_table_wrapper" class="table-wrapper">
+      <div id="color_table_container"></div>
+    </div>
+    
+    <div id="color_heatmap_wrapper" style="display:none;">
+      <div class="graph-toggle" style="margin-bottom:10px;">
+        <button id="color_hm_qty" class="toggle-btn active" onclick="changePivotMetric('COLOR', 'qty')">Size by Qty</button>
+        <button id="color_hm_price" class="toggle-btn" onclick="changePivotMetric('COLOR', 'price')">Size by Price</button>
+        <span style="border-left: 1px solid #444; margin: 0 8px; height: 16px;"></span>
+        <button id="color_hm_top10" class="toggle-btn" onclick="changeHeatmapTopN('COLOR', 10)">Top 10</button>
+        <button id="color_hm_top20" class="toggle-btn active" onclick="changeHeatmapTopN('COLOR', 20)">Top 20</button>
+        <button id="color_hm_top50" class="toggle-btn" onclick="changeHeatmapTopN('COLOR', 50)">Top 50</button>
+      </div>
+      <div id="color_heatmap_container" class="heatmap-container"></div>
+    </div>
+    
+    <div id="color_graph_wrapper" style="display:none;">
+      <div class="graph-toggle" style="margin-bottom:10px;">
+        <button id="color_gr_qty" class="toggle-btn active" onclick="changePivotMetric('COLOR', 'qty')">Quantity</button>
+        <button id="color_gr_price" class="toggle-btn" onclick="changePivotMetric('COLOR', 'price')">Total Price (THB)</button>
+      </div>
+      <div id="color_chart_div" class="chart-container-div"></div>
+    </div>
+
+    <div id="color_timeline_wrapper" style="display:none;">
+      <div id="color_timeline_chart_div" class="chart-container-div"></div>
+    </div>
+  </div>
+
+  <div id="events_view_tab" class="tab-content">
+    <div class="graph-toggle">
+      <button id="events_grain_daily" class="toggle-btn active" onclick="changeEventsViewGranularity('DAILY')">Daily View</button>
+      <button id="events_grain_monthly" class="toggle-btn" onclick="changeEventsViewGranularity('MONTHLY')">Monthly View</button>
+    </div>
+    <div id="events_table_container" class="table-wrapper"></div>
+  </div>
+
+  <div id="shared_timeline_controls_wrapper" style="display: none;">
+    <div class="view-header-actions" style="margin-top: 15px;">
+      <div class="graph-toggle" style="margin-bottom:0;">
+        <button id="timeline_daily" class="toggle-btn active" onclick="changeTimelineGranularity('DAILY')">Daily</button>
+        <button id="timeline_monthly" class="toggle-btn" onclick="changeTimelineGranularity('MONTHLY')">Monthly</button>
+        <button id="timeline_yearly" class="toggle-btn" onclick="changeTimelineGranularity('YEARLY')">Yearly</button>
+      </div>
+      <div class="graph-toggle" style="margin-bottom:0;">
+        <span style="font-size:11px; font-weight:bold; color:#aaaaaa; text-transform:uppercase; margin-left:5px; margin-right:5px;">Mode:</span>
+        <button id="timeline_mode_discrete" class="toggle-btn" onclick="changeTimelineCalculationMode('DISCRETE')">Interval</button>
+        <button id="timeline_mode_cumulative" class="toggle-btn active" onclick="changeTimelineCalculationMode('CUMULATIVE')">Cumulative Sum</button>
+      </div>
+      
+      <div class="graph-toggle" style="margin-bottom:0;">
+        <span style="font-size:11px; font-weight:bold; color:#aaaaaa; text-transform:uppercase; margin-left:5px; margin-right:5px;">Breakdown:</span>
+        <button id="timeline_breakdown_none" class="toggle-btn" onclick="changeTimelineBreakdown('NONE')">Global Total</button>
+        <button id="timeline_breakdown_context" class="toggle-btn active" onclick="changeTimelineBreakdown('CONTEXT')">By Context</button>
+      </div>
+    </div>
+
+    <div class="multiselect-panel">
+      <div class="multiselect-box" id="subfilter_box_member" style="display:none;">
+        <div class="multiselect-header-container">
+          <h4>Timeline Members Filter</h4>
+          <div class="sub-filter-utilities">
+            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_member_checkboxes', true)">Select All</button>
+            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_member_checkboxes', false)">Clear All</button>
+          </div>
+        </div>
+        <input type="text" id="timeline_member_search" class="subfilter-search-input" placeholder="Search member name..." oninput="filterCheckboxesByText('timeline_member_search', 'timeline_member_checkboxes')">
+        <div id="timeline_member_checkboxes" class="checkbox-container"></div>
+      </div>
+      
+      <div class="multiselect-box" id="subfilter_box_group" style="display:none;">
+        <div class="multiselect-header-container">
+          <h4>Timeline Groups Filter</h4>
+          <div class="sub-filter-utilities">
+            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_group_checkboxes', true)">Select All</button>
+            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_group_checkboxes', false)">Clear All</button>
+          </div>
+        </div>
+        <input type="text" id="timeline_group_search" class="subfilter-search-input" placeholder="Search group name..." oninput="filterCheckboxesByText('timeline_group_search', 'timeline_group_checkboxes')">
+        <div id="timeline_group_checkboxes" class="checkbox-container"></div>
+      </div>
+
+      <div class="multiselect-box" id="subfilter_box_color" style="display:none;">
+        <div class="multiselect-header-container">
+          <h4>Timeline Colors Filter</h4>
+          <div class="sub-filter-utilities">
+            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_color_checkboxes', true)">Select All</button>
+            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_color_checkboxes', false)">Clear All</button>
+          </div>
+        </div>
+        <input type="text" id="timeline_color_search" class="subfilter-search-input" placeholder="Search color..." oninput="filterCheckboxesByText('timeline_color_search', 'timeline_color_checkboxes')">
+        <div id="timeline_color_checkboxes" class="checkbox-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // CONFIGURATION: HIDE COLUMNS FROM RAW TAB
+    // ==========================================
+    const HIDDEN_RAW_COLUMNS = ['Member Image'];
+
+    let ALL_DATA = [];
+    let HEADERS = [];
+    let REORDERED_HEADERS = []; 
+    let FILTERED_DATA = [];
+    let ACTIVE_CELL_FILTERS = {}; 
+    let EVENTS_VIEW_MODE = 'DAILY'; // Active View state tracking for the Events tab ('DAILY' or 'MONTHLY')
+
+    const ALLOWED_GRID_FILTERS = new Set([
+      'Member', 'Color', 'Group', 'Date', 'Month', 'Year', 'Type', 'Location', 'Nationality', 'Event', 'Company'
+    ]);
+
+    const COLOR_MAP = {
+      'Green':  { primary: '#27ae60' },
+      'Red':    { primary: '#e74c3c' },
+      'Pink':   { primary: '#ff69b4' },
+      'White':  { primary: '#ffffff' }, 
+      'Blue':   { primary: '#3498db' },
+      'Yellow': { primary: '#f1c40f' }, 
+      'N/A':    { primary: '#7f8c8d' },
+      'Purple': { primary: '#9b59b6' },
+      'Orange': { primary: '#e67e22' },
+      'Black':  { primary: '#555555' }
+    };
+
+    function getTextColorStyle(colorName) {
+      let norm = String(colorName).trim();
+      let match = COLOR_MAP[norm] || { primary: '#e0e0e0' };
+      return 'color:' + match.primary + '; font-weight:700;';
+    }
+
+    function getMemberColorCode(memberName) {
+      let foundRow = ALL_DATA.find(r => r['Member'] === memberName);
+      if (foundRow && foundRow['Color']) {
+        let match = COLOR_MAP[String(foundRow['Color']).trim()];
+        if (match) return match.primary;
+      }
+      return '#8ab4f8';
+    }
+
+    let MEMBER_P_ARRAY = [];
+    let GROUP_P_ARRAY = [];
+    let COLOR_P_ARRAY = [];
+    let EVENTS_P_ARRAY = []; // Events tab operational data array
+
+    let TIMELINE_GRANULARITY = 'DAILY';
+    let TIMELINE_BREAKDOWN = 'CONTEXT'; 
+    let TIMELINE_CALC_MODE = 'CUMULATIVE';
+    
+    let PIVOT_MODES = { MEMBER: 'TABLE', GROUP: 'TABLE', COLOR: 'TABLE' };
+    let METRIC_SELECTIONS = { MEMBER: 'qty', GROUP: 'qty', COLOR: 'qty' };
+    let HEATMAP_TOP_N = { MEMBER: 20, GROUP: 20, COLOR: 20 };
+
+    let TOTAL_QTY_GLOBAL = 0;
+    let TOTAL_PRICE_GLOBAL = 0;
+
+    let RAW_SORT = { column: null, asc: true };
+    let MEMBER_SORT = { column: 'qty', asc: false };
+    let GROUP_SORT = { column: 'qty', asc: false };
+    let COLOR_SORT = { column: 'qty', asc: false };
+    let EVENTS_SORT = { column: 'Date', asc: true }; // Default chronological ordering
+    
+    let filterDebounceTimeout;
+
+    google.charts.load('current', {'packages':['corechart', 'treemap']});
+    google.charts.setOnLoadCallback(initializeDashboardEngine);
+
+    function initializeDashboardEngine() {
+      try {
+        ALL_DATA = <?!= allDataJson ?>;
+        HEADERS = <?!= headersJson ?>;
+        
+        let middleHeaders = HEADERS.filter(h => h !== 'IMG' && h !== 'Talk Topic');
+        REORDERED_HEADERS = [];
+        if (HEADERS.includes('IMG')) REORDERED_HEADERS.push('IMG');
+        REORDERED_HEADERS = REORDERED_HEADERS.concat(middleHeaders);
+        if (HEADERS.includes('Talk Topic')) REORDERED_HEADERS.push('Talk Topic');
+
+        // Clean out explicitly hidden raw columns from header rendering queue
+        REORDERED_HEADERS = REORDERED_HEADERS.filter(h => !HIDDEN_RAW_COLUMNS.includes(h));
+
+        FILTERED_DATA = [...ALL_DATA];
+        
+        populateFilterOptionsCascaded(true);
+
+        const currentYearString = String(new Date().getFullYear());
+        const yearSelectElement = document.getElementById('filter_year');
+        if (yearSelectElement) {
+          for (let i = 0; i < yearSelectElement.options.length; i++) {
+            if (yearSelectElement.options[i].value === currentYearString) {
+              yearSelectElement.value = currentYearString;
+              break;
+            }
+          }
+        }
+
+        applyFilters(); 
+      } catch (e) {
+        document.getElementById('raw_table_container').innerHTML = "Variables Processing Error: Framework data structural arrays empty.";
+      }
+    }
+
+    function populateFilterOptionsCascaded(isInitialSetup) {
+      const selectedYear = document.getElementById('filter_year').value;
+      const selectedMember = document.getElementById('filter_member').value;
+      const selectedGroup = document.getElementById('filter_group').value;
+      const selectedColor = document.getElementById('filter_color').value;
+      const selectedNat = document.getElementById('filter_nationality').value;
+      const selectedCmp = document.getElementById('filter_company').value;
+
+      const years = new Set(), members = new Set(), groups = new Set(), colors = new Set(), nationalities = new Set(), companies = new Set();
+      
+      for(let i = 0; i < ALL_DATA.length; i++) {
+        let row = ALL_DATA[i];
+        
+        let matchYear = !selectedYear || String(row['Year']) === String(selectedYear);
+        let matchMember = !selectedMember || row['Member'] === selectedMember;
+        let matchGroup = !selectedGroup || row['Group'] === selectedGroup;
+        let matchColor = !selectedColor || row['Color'] === selectedColor;
+        let matchNat = !selectedNat || row['Nationality'] === selectedNat;
+        let matchCmp = !selectedCmp || row['Company'] === selectedCmp;
+
+        if (matchMember && matchGroup && matchColor && matchNat && matchCmp) if(row['Year']) years.add(row['Year']);
+        if (matchYear && matchGroup && matchColor && matchNat && matchCmp) if(row['Member']) members.add(row['Member']);
+        if (matchYear && matchMember && matchColor && matchNat && matchCmp) if(row['Group']) groups.add(row['Group']);
+        if (matchYear && matchMember && matchGroup && matchNat && matchCmp) if(row['Color']) colors.add(row['Color']);
+        if (matchYear && matchMember && matchGroup && matchColor && matchCmp) if(row['Nationality']) nationalities.add(row['Nationality']);
+        if (matchYear && matchMember && matchGroup && matchColor && matchNat) if(row['Company']) companies.add(row['Company']);
+      }
+
+      updateDropdownElement('filter_year', Array.from(years).sort(), selectedYear, "-- All Years --");
+      updateDropdownElement('filter_member', Array.from(members).sort(), selectedMember, "-- All Members --");
+      updateDropdownElement('filter_group', Array.from(groups).sort(), selectedGroup, "-- All Groups --");
+      updateDropdownElement('filter_color', Array.from(colors).sort(), selectedColor, "-- All Colors --");
+      updateDropdownElement('filter_nationality', Array.from(nationalities).sort(), selectedNat, "-- All Nationalities --");
+      updateDropdownElement('filter_company', Array.from(companies).sort(), selectedCmp, "-- All Companies --");
+
+      buildTimelineFilterCheckboxes();
+    }
+
+    function updateDropdownElement(id, items, selectedValue, defaultText) {
+      const select = document.getElementById(id);
+      if (!select) return;
+      select.innerHTML = '<option value="">' + defaultText + '</option>';
+      const frag = document.createDocumentFragment();
+      items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item; opt.innerHTML = item;
+        if (String(item) === String(selectedValue)) opt.selected = true;
+        frag.appendChild(opt);
+      });
+      select.appendChild(frag);
+    }
+
+    function buildTimelineFilterCheckboxes() {
+      const memBox = document.getElementById('timeline_member_checkboxes');
+      const grpBox = document.getElementById('timeline_group_checkboxes');
+      const colBox = document.getElementById('timeline_color_checkboxes');
+      if (!memBox || !grpBox || !colBox) return;
+      
+      const currentSelectedMembers = getSelectedTimelineCheckboxes('timeline_member_checkboxes');
+      const currentSelectedGroups = getSelectedTimelineCheckboxes('timeline_group_checkboxes');
+      const currentSelectedColors = getSelectedTimelineCheckboxes('timeline_color_checkboxes');
+      const isFirstRun = (currentSelectedMembers.size === 0 && currentSelectedGroups.size === 0 && currentSelectedColors.size === 0);
+
+      const activeMembers = new Set();
+      const activeGroups = new Set();
+      const activeColors = new Set();
+
+      FILTERED_DATA.forEach(row => {
+        if (row['Member']) activeMembers.add(row['Member']);
+        if (row['Group']) activeGroups.add(row['Group']);
+        if (row['Color']) activeColors.add(row['Color']);
+      });
+
+      const sortedMembers = Array.from(activeMembers).sort();
+      const sortedGroups = Array.from(activeGroups).sort();
+      const sortedColors = Array.from(activeColors).sort();
+      
+      memBox.innerHTML = sortedMembers.map(m => {
+        let isChecked = isFirstRun || currentSelectedMembers.has(m) ? 'checked' : '';
+        return '<label class="checkbox-item"><input type="checkbox" value="' + m + '" ' + isChecked + ' onchange="drawTimelineChart()"> ' + m + '</label>';
+      }).join('') || '<span style="font-size:12px; color:#666; padding:6px;">No members available</span>';
+
+      grpBox.innerHTML = sortedGroups.map(g => {
+        let isChecked = isFirstRun || currentSelectedGroups.has(g) ? 'checked' : '';
+        return '<label class="checkbox-item"><input type="checkbox" value="' + g + '" ' + isChecked + ' onchange="drawTimelineChart()"> ' + g + '</label>';
+      }).join('') || '<span style="font-size:12px; color:#666; padding:6px;">No groups available</span>';
+
+      colBox.innerHTML = sortedColors.map(c => {
+        let isChecked = isFirstRun || currentSelectedColors.has(c) ? 'checked' : '';
+        return '<label class="checkbox-item"><input type="checkbox" value="' + c + '" ' + isChecked + ' onchange="drawTimelineChart()"> ' + c + '</label>';
+      }).join('') || '<span style="font-size:12px; color:#666; padding:6px;">No colors available</span>';
+
+      filterCheckboxesByText('timeline_member_search', 'timeline_member_checkboxes');
+      filterCheckboxesByText('timeline_group_search', 'timeline_group_checkboxes');
+      filterCheckboxesByText('timeline_color_search', 'timeline_color_checkboxes');
+    }
+
+    function filterCheckboxesByText(searchBoxId, checkboxContainerId) {
+      const searchBox = document.getElementById(searchBoxId);
+      const container = document.getElementById(checkboxContainerId);
+      if (!searchBox || !container) return;
+      const query = searchBox.value.toLowerCase().trim();
+      const labels = container.getElementsByClassName('checkbox-item');
+      for (let i = 0; i < labels.length; i++) {
+        let textContent = labels[i].textContent || labels[i].innerText;
+        labels[i].style.display = textContent.toLowerCase().includes(query) ? 'flex' : 'none';
+      }
+    }
+
+    function toggleSubCheckboxes(containerId, checkAllState) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const labels = container.getElementsByClassName('checkbox-item');
+      for (let i = 0; i < labels.length; i++) {
+        if (labels[i].style.display !== 'none') {
+          const input = labels[i].getElementsByTagName('input')[0];
+          if (input) input.checked = checkAllState;
+        }
+      }
+      drawTimelineChart();
+    }
+
+    function applyFilters() {
+      clearTimeout(filterDebounceTimeout);
+      filterDebounceTimeout = setTimeout(() => {
+        window.requestAnimationFrame(runFilterPipelineCalculation);
+      }, 40);
+    }
+
+    function runFilterPipelineCalculation() {
+      const yr = document.getElementById('filter_year').value;
+      const mem = document.getElementById('filter_member').value;
+      const grp = document.getElementById('filter_group').value;
+      const colFilter = document.getElementById('filter_color').value;
+      const nat = document.getElementById('filter_nationality').value;
+      const cmp = document.getElementById('filter_company').value;
+
+      const hasCellFilters = Object.keys(ACTIVE_CELL_FILTERS).length > 0;
+
+      FILTERED_DATA = ALL_DATA.filter(row => {
+        if (yr && String(row['Year']) !== String(yr)) return false;
+        if (mem && row['Member'] !== mem) return false;
+        if (grp && row['Group'] !== grp) return false;
+        if (colFilter && row['Color'] !== colFilter) return false;
+        if (nat && row['Nationality'] !== nat) return false;
+        if (cmp && row['Company'] !== cmp) return false;
+        if (hasCellFilters) {
+          for (let colKey in ACTIVE_CELL_FILTERS) {
+            if (String(row[colKey]) !== String(ACTIVE_CELL_FILTERS[colKey])) return false;
+          }
+        }
+        return true;
+      });
+
+      populateFilterOptionsCascaded(false);
+      renderTokenBreadcrumbs();
+      calculateGlobalKPIs();
+      buildPivotDatasets();
+      
+      sortRawDataStructure();
+      sortEventsDataStructure();
+      renderAllViews();
+    }
+
+    function filterByCell(columnName, value) {
+      if (!ALLOWED_GRID_FILTERS.has(columnName)) return;
+      ACTIVE_CELL_FILTERS[columnName] = value;
+      
+      let elementMap = { 
+        'Year': 'filter_year', 'Member': 'filter_member', 'Group': 'filter_group', 
+        'Color': 'filter_color', 'Nationality': 'filter_nationality', 'Company': 'filter_company' 
+      };
+      if (elementMap[columnName]) {
+        let uiEl = document.getElementById(elementMap[columnName]);
+        if (uiEl) uiEl.value = value;
+      }
+      applyFilters();
+    }
+
+    function removeCellFilterToken(columnName) {
+      delete ACTIVE_CELL_FILTERS[columnName];
+      let elementMap = { 
+        'Year': 'filter_year', 'Member': 'filter_member', 'Group': 'filter_group', 
+        'Color': 'filter_color', 'Nationality': 'filter_nationality', 'Company': 'filter_company' 
+      };
+      if (elementMap[columnName]) {
+        let uiEl = document.getElementById(elementMap[columnName]);
+        if (uiEl) uiEl.value = "";
+      }
+      applyFilters();
+    }
+
+    function renderTokenBreadcrumbs() {
+      const statusDiv = document.getElementById('cell_filter_status');
+      const container = document.getElementById('token_container');
+      let filterKeys = Object.keys(ACTIVE_CELL_FILTERS);
+      if (filterKeys.length === 0) {
+        statusDiv.style.display = 'none';
+        return;
+      }
+      container.innerHTML = filterKeys.map(k => {
+        return '<span class="filter-token">' + k + ': "' + ACTIVE_CELL_FILTERS[k] + '" <button class="clear-token-btn" onclick="removeCellFilterToken(\'' + k + '\')">×</button></span>';
+      }).join('');
+      statusDiv.style.display = 'flex';
+    }
+
+    function createTop3ListHTML(frequencyMap, globalTotal, isMemberCard = false) {
+      let sortedItems = Object.keys(frequencyMap).map(key => {
+        return { name: key, value: frequencyMap[key] };
+      }).sort((a, b) => b.value - a.value);
+
+      if (sortedItems.length === 0) return "No records found";
+      let top3 = sortedItems.slice(0, 3);
+      let html = "<ol>";
+      top3.forEach(item => {
+        let pct = globalTotal > 0 ? ((item.value / globalTotal) * 100).toFixed(1) : '0.0';
+        let displayVal = item.value.toLocaleString();
+        let inlineColorStyle = isMemberCard ? `style="color: ${getMemberColorCode(item.name)}; font-weight: bold;"` : "";
+        html += `<li><strong ${inlineColorStyle}>${item.name}</strong>: ${displayVal} (${pct}%)</li>`;
+      });
+      return html + "</ol>";
+    }
+
+    function calculateGlobalKPIs() {
+      TOTAL_QTY_GLOBAL = 0; TOTAL_PRICE_GLOBAL = 0;
+      let memberMap = {}, groupMap = {}, typeMap = {}, locationMap = {};
+
+      for (let i = 0; i < FILTERED_DATA.length; i++) {
+        let row = FILTERED_DATA[i];
+        let q = Number(row['Quantity']) || Number(row['Qty']) || 0;
+        let p = Number(row['Total Price (THB)']) || 0;
+        let m = row['Member'] || 'Unknown';
+        let g = row['Group'] || 'Unknown';
+        let t = row['Type'] || 'Unknown';
+        let l = row['Location'] || 'Unknown';
+
+        TOTAL_QTY_GLOBAL += q; TOTAL_PRICE_GLOBAL += p;
+        if (row['Member']) memberMap[m] = (memberMap[m] || 0) + q;
+        if (row['Group']) groupMap[g] = (groupMap[g] || 0) + q;
+        if (row['Type']) typeMap[t] = (typeMap[t] || 0) + q;
+        if (row['Location']) locationMap[l] = (locationMap[l] || 0) + q;
+      }
+
+      document.getElementById('kpi_total_qty').innerText = TOTAL_QTY_GLOBAL.toLocaleString();
+      document.getElementById('kpi_total_qty_subtext').innerText = '฿ ' + TOTAL_PRICE_GLOBAL.toLocaleString();
+      document.getElementById('kpi_unique_members').innerText = Object.keys(memberMap).filter(k => k !== 'Unknown').length.toLocaleString();
+      document.getElementById('kpi_unique_groups').innerText = Object.keys(groupMap).filter(k => k !== 'Unknown').length.toLocaleString();
+      document.getElementById('kpi_top_members').innerHTML = createTop3ListHTML(memberMap, TOTAL_QTY_GLOBAL, true);
+      document.getElementById('kpi_top_groups').innerHTML = createTop3ListHTML(groupMap, TOTAL_QTY_GLOBAL, false);
+      document.getElementById('kpi_top_types').innerHTML = createTop3ListHTML(typeMap, TOTAL_QTY_GLOBAL, false);
+      document.getElementById('kpi_top_locations').innerHTML = createTop3ListHTML(locationMap, TOTAL_QTY_GLOBAL, false);
+    }
+
+    function renderAllViews() {
+      renderRawTable();
+      renderEventsPivotTable();
+
+      ['MEMBER', 'GROUP', 'COLOR'].forEach(vk => {
+        let lower = vk.toLowerCase();
+        let mode = PIVOT_MODES[vk];
+        
+        document.getElementById(lower + '_table_wrapper').style.display = (mode === 'TABLE') ? 'block' : 'none';
+        document.getElementById(lower + '_heatmap_wrapper').style.display = (mode === 'HEATMAP') ? 'block' : 'none';
+        document.getElementById(lower + '_graph_wrapper').style.display = (mode === 'GRAPH') ? 'block' : 'none';
+        document.getElementById(lower + '_timeline_wrapper').style.display = (mode === 'TIMELINE') ? 'block' : 'none';
+        
+        if (mode === 'TABLE') {
+          if (vk === 'MEMBER') renderMemberPivotHTML();
+          else if (vk === 'GROUP') renderGroupPivotHTML();
+          else renderColorPivotHTML();
+        } else if (mode === 'HEATMAP') {
+          drawHeatmapWidget(vk);
+        } else if (mode === 'GRAPH') {
+          drawDimensionBarGraph(vk);
+        } else if (mode === 'TIMELINE') {
+          drawTimelineChart();
+        }
+      });
+      handleTimelineControlsVisibility();
+    }
+
+    function handleTimelineControlsVisibility() {
+      let sharedControls = document.getElementById('shared_timeline_controls_wrapper');
+      let activeTab = document.querySelector('.tab-content.active');
+      let isTimelineActive = false;
+      let labelBtn = document.getElementById('timeline_breakdown_context');
+      
+      if (activeTab) {
+        if (activeTab.id === 'member_view_tab' && PIVOT_MODES.MEMBER === 'TIMELINE') {
+          isTimelineActive = true;
+          if(labelBtn) labelBtn.innerText = "By Member";
+          document.getElementById('subfilter_box_member').style.display = 'flex';
+          document.getElementById('subfilter_box_group').style.display = 'none';
+          document.getElementById('subfilter_box_color').style.display = 'none';
+        } else if (activeTab.id === 'group_view_tab' && PIVOT_MODES.GROUP === 'TIMELINE') {
+          isTimelineActive = true;
+          if(labelBtn) labelBtn.innerText = "By Group";
+          document.getElementById('subfilter_box_member').style.display = 'none';
+          document.getElementById('subfilter_box_group').style.display = 'flex';
+          document.getElementById('subfilter_box_color').style.display = 'none';
+        } else if (activeTab.id === 'color_view_tab' && PIVOT_MODES.COLOR === 'TIMELINE') {
+          isTimelineActive = true;
+          if(labelBtn) labelBtn.innerText = "By Color";
+          document.getElementById('subfilter_box_member').style.display = 'none';
+          document.getElementById('subfilter_box_group').style.display = 'none';
+          document.getElementById('subfilter_box_color').style.display = 'flex';
+        }
+      }
+      
+      if (isTimelineActive && activeTab) {
+        sharedControls.style.display = 'block';
+        activeTab.appendChild(sharedControls);
+      } else {
+        sharedControls.style.display = 'none';
+      }
+    }
+
+    function handleRawSort(columnName) {
+      if (RAW_SORT.column === columnName) { RAW_SORT.asc = !RAW_SORT.asc; } 
+      else { RAW_SORT.column = columnName; RAW_SORT.asc = true; }
+      sortRawDataStructure();
+      renderAllViews();
+    }
+
+    function sortRawDataStructure() {
+      if (!RAW_SORT.column) return;
+      const col = RAW_SORT.column; const isAsc = RAW_SORT.asc;
+      FILTERED_DATA.sort((a, b) => {
+        let valA = a[col] !== undefined ? a[col] : '';
+        let valB = b[col] !== undefined ? b[col] : '';
+        if (valA !== '' && valB !== '' && !isNaN(valA) && !isNaN(valB)) return isAsc ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+        return isAsc ? String(valA).toLowerCase().localeCompare(String(valB).toLowerCase()) : String(valB).toLowerCase().localeCompare(String(valA).toLowerCase());
+      });
+    }
+
+    function renderRawTable() {
+      const container = document.getElementById('raw_table_container');
+      const totalRecords = FILTERED_DATA.length;
+      if(totalRecords === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No matching records found.</div>"; return; }
+
+      let htmlBuffer = ["<table><thead><tr>"];
+      REORDERED_HEADERS.forEach(h => {
+        let sortClass = RAW_SORT.column === h ? (RAW_SORT.asc ? 'class="sort-asc"' : 'class="sort-desc"') : '';
+        htmlBuffer.push('<th ' + sortClass + ' onclick="handleRawSort(\'' + h + '\')">' + h + '</th>');
+      });
+      htmlBuffer.push("</tr></thead><tbody>");
+
+      const renderLimit = Math.min(totalRecords, 200);
+      for (let i = 0; i < renderLimit; i++) {
+        let row = FILTERED_DATA[i];
+        htmlBuffer.push("<tr>");
+        REORDERED_HEADERS.forEach(h => {
+          let val = row[h] !== undefined ? row[h] : '';
+          
+          // Determine custom styling parameters for Member and Color row metrics
+          let inlineStyle = '';
+          if (h === 'Member') {
+            inlineStyle = 'style="' + getTextColorStyle(row['Color']) + '"';
+          } else if (h === 'Color') {
+            inlineStyle = 'style="' + getTextColorStyle(val) + '"';
+          }
+
+          if (h === 'IMG' && val && (String(val).startsWith('http://') || String(val).startsWith('https://'))) {
+            htmlBuffer.push('<td><a class="image-link" href="' + val + '" target="_blank">[ <span style="font-size: 16px; font-weight: bold; display: inline-block; vertical-align: middle; line-height: 1;">⌕</span> ]</a></td>');
+          } else if (h === 'IMG') {
+            htmlBuffer.push('<td>' + val + '</td>');
+          } else if (ALLOWED_GRID_FILTERS.has(h)) {
+            let safeVal = String(val).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            htmlBuffer.push('<td ' + inlineStyle + ' class="raw-clickable-cell" onclick="filterByCell(\'' + h + '\', \'' + safeVal + '\')">' + val + '</td>');
+          } else {
+            htmlBuffer.push('<td ' + inlineStyle + '>' + val + '</td>');
+          }
+        });
+        htmlBuffer.push("</tr>");
+      }
+      htmlBuffer.push("</tbody></table>");
+      if (totalRecords > 200) htmlBuffer.push('<div class="pagination-alert">Performance Notice: Rendering first 200 of ' + totalRecords.toLocaleString() + ' active matches. Aggregate metrics and tab pivots calculations still include 100% of rows.</div>');
+      container.innerHTML = htmlBuffer.join('');
+    }
+
+    function buildPivotDatasets() {
+      let memberMap = {}, groupMap = {}, colorMap = {}, eventsMap = {};
+      for (let i = 0; i < FILTERED_DATA.length; i++) {
+        let row = FILTERED_DATA[i];
+        let m = row['Member'] || 'Unknown'; let g = row['Group'] || 'Unknown'; let c = row['Color'] || 'Unknown';
+        let ev = row['Event'] || 'Unknown'; let dt = row['Date'] || 'Unknown';
+        let q = Number(row['Quantity']) || Number(row['Qty']) || 0; let p = Number(row['Total Price (THB)']) || 0;
+
+        let mKey = m + "||" + g; 
+        if (!memberMap[mKey]) { memberMap[mKey] = { Member: m, Group: g, Color: c, qty: 0, price: 0 }; }
+        memberMap[mKey].qty += q; memberMap[mKey].price += p;
+        
+        if (!groupMap[g]) { groupMap[g] = { Group: g, qty: 0, price: 0 }; }
+        groupMap[g].qty += q; groupMap[g].price += p;
+        
+        if (!colorMap[c]) { colorMap[c] = { Color: c, qty: 0, price: 0 }; }
+        colorMap[c].qty += q; colorMap[c].price += p;
+
+        // Group fields explicitly bound to uniquely combined Date + Event pathways
+        let eKey = dt + "||" + ev;
+        if (!eventsMap[eKey]) { eventsMap[eKey] = { Date: dt, Event: ev, qty: 0, price: 0 }; }
+        eventsMap[eKey].qty += q; eventsMap[eKey].price += p;
+      }
+      MEMBER_P_ARRAY = Object.values(memberMap); 
+      GROUP_P_ARRAY = Object.values(groupMap); 
+      COLOR_P_ARRAY = Object.values(colorMap);
+      EVENTS_P_ARRAY = Object.values(eventsMap);
+      
+      MEMBER_P_ARRAY.sort((a, b) => b.qty - a.qty); 
+      GROUP_P_ARRAY.sort((a, b) => b.qty - a.qty); 
+      COLOR_P_ARRAY.sort((a, b) => b.qty - a.qty);
+      
+      sortPivotDataStructure('MEMBER');
+      sortPivotDataStructure('GROUP');
+      sortPivotDataStructure('COLOR');
+      sortEventsDataStructure();
+    }
+
+    function handlePivotSortClick(type, metricKey) {
+      let sortObj = type === 'MEMBER' ? MEMBER_SORT : (type === 'GROUP' ? GROUP_SORT : COLOR_SORT);
+      if (sortObj.column === metricKey) { sortObj.asc = !sortObj.asc; } else { sortObj.column = metricKey; sortObj.asc = true; }
+      sortPivotDataStructure(type);
+      if (type === 'MEMBER') renderMemberPivotHTML(); else if (type === 'GROUP') renderGroupPivotHTML(); else renderColorPivotHTML();
+    }
+
+    function sortPivotDataStructure(type) {
+      let sortObj = type === 'MEMBER' ? MEMBER_SORT : (type === 'GROUP' ? GROUP_SORT : COLOR_SORT);
+      let targetArray = type === 'MEMBER' ? MEMBER_P_ARRAY : (type === 'GROUP' ? GROUP_P_ARRAY : COLOR_P_ARRAY);
+      if (!sortObj.column) return;
+      const col = sortObj.column; const isAsc = sortObj.asc;
+
+      targetArray.sort((a, b) => {
+        let valA = col === 'qty_pct' ? (TOTAL_QTY_GLOBAL > 0 ? a.qty / TOTAL_QTY_GLOBAL : 0) : a[col];
+        let valB = col === 'qty_pct' ? (TOTAL_QTY_GLOBAL > 0 ? b.qty / TOTAL_QTY_GLOBAL : 0) : b[col];
+        if (typeof valA === 'number' && typeof valB === 'number') return isAsc ? valA - valB : valB - valA;
+        return isAsc ? String(valA).toLowerCase().localeCompare(String(valB).toLowerCase()) : String(valB).toLowerCase().localeCompare(String(valA).toLowerCase());
+      });
+    }
+
+    function handleEventsSortClick(metricKey) {
+      if (EVENTS_SORT.column === metricKey) { EVENTS_SORT.asc = !EVENTS_SORT.asc; } 
+      else { EVENTS_SORT.column = metricKey; EVENTS_SORT.asc = true; }
+      sortEventsDataStructure();
+      renderEventsPivotTable();
+    }
+
+    function sortEventsDataStructure() {
+      if (!EVENTS_SORT.column) return;
+      const col = EVENTS_SORT.column; const isAsc = EVENTS_SORT.asc;
+      EVENTS_P_ARRAY.sort((a, b) => {
+        let valA = col === 'qty_pct' ? (TOTAL_QTY_GLOBAL > 0 ? a.qty / TOTAL_QTY_GLOBAL : 0) : a[col];
+        let valB = col === 'qty_pct' ? (TOTAL_QTY_GLOBAL > 0 ? b.qty / TOTAL_QTY_GLOBAL : 0) : b[col];
+        if (typeof valA === 'number' && typeof valB === 'number') return isAsc ? valA - valB : valB - valA;
+        return isAsc ? String(valA).toLowerCase().localeCompare(String(valB).toLowerCase()) : String(valB).toLowerCase().localeCompare(String(valA).toLowerCase());
+      });
+    }
+
+    function renderMemberPivotHTML() {
+      const container = document.getElementById('member_table_container');
+      if (MEMBER_P_ARRAY.length === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No records match criteria parameters.</div>"; return; }
+      const getCls = (col) => MEMBER_SORT.column === col ? (MEMBER_SORT.asc ? 'class="sort-asc"' : 'class="sort-desc"') : '';
+
+      let buf = ['<table><thead><tr><th class="thin-rank-col">#</th><th ' + getCls('Member') + ' onclick="handlePivotSortClick(\'MEMBER\', \'Member\')">Member</th><th ' + getCls('Group') + ' onclick="handlePivotSortClick(\'MEMBER\', \'Group\')">Group</th><th ' + getCls('qty') + ' onclick="handlePivotSortClick(\'MEMBER\', \'qty\')">Quantity</th><th ' + getCls('qty_pct') + ' onclick="handlePivotSortClick(\'MEMBER\', \'qty_pct\')">% Qty</th><th ' + getCls('price') + ' onclick="handlePivotSortClick(\'MEMBER\', \'price\')">Total Price (THB)</th></tr></thead><tbody>'];
+      
+      MEMBER_P_ARRAY.forEach((row, index) => {
+        let safeGroup = String(row.Group).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        buf.push('<tr><td class="thin-rank-col" style="color:#888; font-weight:bold;">' + (index + 1) + '</td><td style="' + getTextColorStyle(row.Color) + '">' + row.Member + '</td><td class="raw-clickable-cell" onclick="filterByCell(\'Group\', \'' + safeGroup + '\')">' + row.Group + '</td><td>' + row.qty.toLocaleString() + '</td><td><strong>' + (TOTAL_QTY_GLOBAL > 0 ? ((row.qty / TOTAL_QTY_GLOBAL) * 100).toFixed(1) : '0.0') + '%</strong></td><td>' + row.price.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr>');
+      });
+      
+      buf.push('<tr style="background:#1a365d; font-weight:bold; color:#ffffff;"><td class="thin-rank-col">-</td><td>TOTAL</td><td>-</td><td>' + TOTAL_QTY_GLOBAL.toLocaleString() + '</td><td>100.0%</td><td>' + TOTAL_PRICE_GLOBAL.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr></tbody></table>');
+      container.innerHTML = buf.join('');
+    }
+
+    function renderGroupPivotHTML() {
+      const container = document.getElementById('group_table_container');
+      if (GROUP_P_ARRAY.length === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No records match criteria parameters.</div>"; return; }
+      const getCls = (col) => GROUP_SORT.column === col ? (GROUP_SORT.asc ? 'class="sort-asc"' : 'class="sort-desc"') : '';
+
+      let buf = ['<table><thead><tr><th class="thin-rank-col">#</th><th ' + getCls('Group') + ' onclick="handlePivotSortClick(\'GROUP\', \'Group\')">Group</th><th ' + getCls('qty') + ' onclick="handlePivotSortClick(\'GROUP\', \'qty\')">Quantity</th><th ' + getCls('qty_pct') + ' onclick="handlePivotSortClick(\'GROUP\', \'qty_pct\')">% Qty</th><th ' + getCls('price') + ' onclick="handlePivotSortClick(\'GROUP\', \'price\')">Total Price (THB)</th></tr></thead><tbody>'];
+      GROUP_P_ARRAY.forEach((row, index) => {
+        buf.push('<tr><td class="thin-rank-col" style="color:#888; font-weight:bold;">' + (index + 1) + '</td><td>' + row.Group + '</td><td>' + row.qty.toLocaleString() + '</td><td><strong>' + (TOTAL_QTY_GLOBAL > 0 ? ((row.qty / TOTAL_QTY_GLOBAL) * 100).toFixed(1) : '0.0') + '%</strong></td><td>' + row.price.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr>');
+      });
+      buf.push('<tr style="background:#1a365d; font-weight:bold; color:#ffffff;"><td class="thin-rank-col">-</td><td>TOTAL</td><td>' + TOTAL_QTY_GLOBAL.toLocaleString() + '</td><td>100.0%</td><td>' + TOTAL_PRICE_GLOBAL.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr></tbody></table>');
+      container.innerHTML = buf.join('');
+    }
+
+    function renderColorPivotHTML() {
+      const container = document.getElementById('color_table_container');
+      if (COLOR_P_ARRAY.length === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No records match criteria parameters.</div>"; return; }
+      const getCls = (col) => COLOR_SORT.column === col ? (COLOR_SORT.asc ? 'class="sort-asc"' : 'class="sort-desc"') : '';
+
+      let buf = ['<table><thead><tr><th class="thin-rank-col">#</th><th ' + getCls('Color') + ' onclick="handlePivotSortClick(\'COLOR\', \'Color\')">Color</th><th ' + getCls('qty') + ' onclick="handlePivotSortClick(\'COLOR\', \'qty\')">Quantity</th><th ' + getCls('qty_pct') + ' onclick="handlePivotSortClick(\'COLOR\', \'qty_pct\')">% Qty</th><th ' + getCls('price') + ' onclick="handlePivotSortClick(\'COLOR\', \'price\')">Total Price (THB)</th></tr></thead><tbody>'];
+      COLOR_P_ARRAY.forEach((row, index) => {
+        buf.push('<tr><td class="thin-rank-col" style="color:#888; font-weight:bold;">' + (index + 1) + '</td><td style="' + getTextColorStyle(row.Color) + '">' + row.Color + '</td><td>' + row.qty.toLocaleString() + '</td><td><strong>' + (TOTAL_QTY_GLOBAL > 0 ? ((row.qty / TOTAL_QTY_GLOBAL) * 100).toFixed(1) : '0.0') + '%</strong></td><td>' + row.price.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr>');
+      });
+      buf.push('<tr style="background:#1a365d; font-weight:bold; color:#ffffff;"><td class="thin-rank-col">-</td><td>TOTAL</td><td>' + TOTAL_QTY_GLOBAL.toLocaleString() + '</td><td>100.0%</td><td>' + TOTAL_PRICE_GLOBAL.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr></tbody></table>');
+      container.innerHTML = buf.join('');
+    }
+
+    // ==========================================
+    // NEW COMPONENT: RENDER EVENTS TAB VIEW
+    // ==========================================
+  function renderEventsPivotTable() {
+    const container = document.getElementById('events_table_container');
+    if (!container) return;
+    if (EVENTS_P_ARRAY.length === 0) { 
+      container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No event metrics match parameters.</div>"; 
+      return; 
+    }
+    
+    // Separate or group dynamically based on Daily vs. Monthly active selection switches
+    let processingMap = {};
+    
+    FILTERED_DATA.forEach(row => {
+      let ev = row['Event'] || 'Unknown';
+      let q = Number(row['Quantity']) || Number(row['Qty']) || 0;
+      let p = Number(row['Total Price (THB)']) || 0;
+      
+      // 1. Switch key assignment based on operational granularity rule
+      let timeKey = (EVENTS_VIEW_MODE === 'MONTHLY') ? (row['Month'] || 'Unknown') : (row['Date'] || 'Unknown');
+      let uniqueGroupKey = timeKey + "||" + ev;
+      
+      if (!processingMap[uniqueGroupKey]) {
+        processingMap[uniqueGroupKey] = { TimeKey: timeKey, Event: ev, qty: 0, price: 0 };
+      }
+      processingMap[uniqueGroupKey].qty += q;
+      processingMap[uniqueGroupKey].price += p;
+    });
+    
+    let localEventsArray = Object.values(processingMap);
+    
+    // Dynamic sorting application logic using your existing handler parameters
+    const col = EVENTS_SORT.column || 'TimeKey';
+    
+    // FIX: Defaults to false (descending) on first load if EVENTS_SORT.asc is undefined
+    const isAsc = EVENTS_SORT.asc !== undefined ? EVENTS_SORT.asc : false;
+    
+    localEventsArray.sort((a, b) => {
+      let valA = col === 'Date' || col === 'Month' ? a.TimeKey : (col === 'qty_pct' ? a.qty : a[col]);
+      let valB = col === 'Date' || col === 'Month' ? b.TimeKey : (col === 'qty_pct' ? b.qty : b[col]);
+      if (typeof valA === 'number' && typeof valB === 'number') return isAsc ? valA - valB : valB - valA;
+      return isAsc ? String(valA).toLowerCase().localeCompare(String(valB).toLowerCase()) : String(valB).toLowerCase().localeCompare(String(valA).toLowerCase());
+    });
+
+    // FIX: Ensures the table header UI arrow/class matches the actual state on first load
+    const currentSortColumn = EVENTS_SORT.column || ((EVENTS_VIEW_MODE === 'MONTHLY') ? 'Month' : 'Date');
+    const getCls = (metric) => currentSortColumn === metric ? (isAsc ? 'class="sort-asc"' : 'class="sort-desc"') : '';
+    
+    let timeHeaderLabel = (EVENTS_VIEW_MODE === 'MONTHLY') ? 'Month' : 'Date';
+    
+    let buf = ['<table><thead><tr><th ' + getCls(timeHeaderLabel) + ' onclick="handleEventsSortClick(\'' + timeHeaderLabel + '\')">' + timeHeaderLabel + '</th><th ' + getCls('Event') + ' onclick="handleEventsSortClick(\'Event\')">Event Name</th><th ' + getCls('qty') + ' onclick="handleEventsSortClick(\'qty\')">Quantity</th><th ' + getCls('qty_pct') + ' onclick="handleEventsSortClick(\'qty_pct\')">% Qty</th><th ' + getCls('price') + ' onclick="handleEventsSortClick(\'price\')">Total Price (THB)</th></tr></thead><tbody>'];
+    
+    let previousRenderedTimeKey = null;
+    let isGroupOddRowColorMode = true; // Flips between true/false when timeKey matches shift
+
+    localEventsArray.forEach(row => {
+      let displayTimeValue = "";
+      
+      if (row.TimeKey !== previousRenderedTimeKey) {
+        displayTimeValue = row.TimeKey;
+        previousRenderedTimeKey = row.TimeKey;
+        // Toggle alternating background shade state every time a new date/month block is crossed
+        isGroupOddRowColorMode = !isGroupOddRowColorMode;
+      }
+      
+      // Apply inline styles to groups based on chronological changes
+      let rowBackgroundStyle = isGroupOddRowColorMode ? 'style="background-color: #242424;"' : 'style="background-color: #1a1a1a;"';
+      
+      // 2. Structural Fix: The "raw-clickable-cell" and onclick grid filters have been completely dropped from the Event Name row cell layout matrix.
+      buf.push('<tr ' + rowBackgroundStyle + '><td>' + displayTimeValue + '</td><td>' + row.Event + '</td><td>' + row.qty.toLocaleString() + '</td><td><strong>' + (TOTAL_QTY_GLOBAL > 0 ? ((row.qty / TOTAL_QTY_GLOBAL) * 100).toFixed(1) : '0.0') + '%</strong></td><td>' + row.price.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr>');
+    });
+    
+    buf.push('<tr style="background:#1a365d; font-weight:bold; color:#ffffff;"><td>TOTAL</td><td>-</td><td>' + TOTAL_QTY_GLOBAL.toLocaleString() + '</td><td>100.0%</td><td>' + TOTAL_PRICE_GLOBAL.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr></tbody></table>');
+    container.innerHTML = buf.join('');
+  }
+
+    function togglePivotMode(viewKey, targetMode) {
+      PIVOT_MODES[viewKey] = targetMode;
+      let lower = viewKey.toLowerCase();
+      
+      document.getElementById(lower + '_mode_table').classList.toggle('active', targetMode === 'TABLE');
+      document.getElementById(lower + '_mode_heatmap').classList.toggle('active', targetMode === 'HEATMAP');
+      document.getElementById(lower + '_mode_graph').classList.toggle('active', targetMode === 'GRAPH');
+      document.getElementById(lower + '_mode_timeline').classList.toggle('active', targetMode === 'TIMELINE');
+      
+      renderAllViews();
+    }
+
+    function changePivotMetric(viewKey, metric) {
+      METRIC_SELECTIONS[viewKey] = metric;
+      let lower = viewKey.toLowerCase();
+      if(document.getElementById(lower + '_hm_qty')) {
+        document.getElementById(lower + '_hm_qty').classList.toggle('active', metric === 'qty');
+        document.getElementById(lower + '_hm_price').classList.toggle('active', metric === 'price');
+      }
+      if(document.getElementById(lower + '_gr_qty')) {
+        document.getElementById(lower + '_gr_qty').classList.toggle('active', metric === 'qty');
+        document.getElementById(lower + '_gr_price').classList.toggle('active', metric === 'price');
+      }
+      if (PIVOT_MODES[viewKey] === 'HEATMAP') drawHeatmapWidget(viewKey);
+      else if (PIVOT_MODES[viewKey] === 'GRAPH') drawDimensionBarGraph(viewKey);
+    }
+
+    function changeHeatmapTopN(viewKey, nValue) {
+      HEATMAP_TOP_N[viewKey] = nValue;
+      let lower = viewKey.toLowerCase();
+      [10, 20, 50].forEach(val => {
+        let el = document.getElementById(lower + '_hm_top' + val);
+        if (el) el.classList.toggle('active', val === nValue);
+      });
+      drawHeatmapWidget(viewKey);
+    }
+
+    function drawDimensionBarGraph(viewKey) {
+      let containerId = viewKey.toLowerCase() + '_chart_div';
+      let element = document.getElementById(containerId);
+      if (!element) return;
+
+      let metricKey = METRIC_SELECTIONS[viewKey];
+      let dataList = viewKey === 'MEMBER' ? [...MEMBER_P_ARRAY] : (viewKey === 'GROUP' ? [...GROUP_P_ARRAY] : [...COLOR_P_ARRAY]);
+      let dimLabel = viewKey === 'MEMBER' ? 'Member' : (viewKey === 'GROUP' ? 'Group' : 'Color');
+
+      if (dataList.length === 0) { element.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No structural matching database records found.</div>"; return; }
+      dataList.sort((a, b) => b[metricKey] - a[metricKey]);
+      
+      let labelMetric = metricKey === 'qty' ? 'Quantity' : 'Total Price (THB)';
+      let chartArray = [[dimLabel, labelMetric, { role: 'style' }, { role: 'annotation' }, { role: 'tooltip', type: 'string', p: { html: true } }]];
+      let maxVal = Math.max(...dataList.map(item => item[metricKey])) || 1;
+      let minVal = Math.min(...dataList.map(item => item[metricKey])) || 0;
+      let globalBaseTotal = metricKey === 'qty' ? TOTAL_QTY_GLOBAL : TOTAL_PRICE_GLOBAL;
+
+      dataList.forEach((r, idx) => {
+        let rawVal = r[metricKey];
+        let indexedDisplayName = "#" + (idx + 1) + " " + r[dimLabel];
+        let barColor = '#4285f4';
+        
+        if (viewKey === 'MEMBER') barColor = getMemberColorCode(r['Member']);
+        else if (viewKey === 'COLOR') barColor = (COLOR_MAP[String(r['Color']).trim()] || {primary: '#4285f4'}).primary;
+        else if (viewKey === 'GROUP') {
+          let ratio = 1 - (maxVal === minVal ? 1 : (rawVal - minVal) / (maxVal - minVal));
+          barColor = 'rgb(' + Math.round(26 + 112 * ratio) + ',' + Math.round(54 + 126 * ratio) + ',' + Math.round(93 + 155 * ratio) + ')';
+        }
+
+        let pct = globalBaseTotal > 0 ? ((rawVal / globalBaseTotal) * 100).toFixed(1) : '0.0';
+        let printableValue = metricKey === 'qty' ? rawVal.toLocaleString() : rawVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        let customTooltipHtml = '<div class="custom-graph-tooltip"><b>' + indexedDisplayName + '</b>' + labelMetric + ' : ' + printableValue + '<br>(' + pct + '%)</div>';
+        chartArray.push([indexedDisplayName, rawVal, 'color: ' + barColor, printableValue, customTooltipHtml]);
+      });
+
+      let dataTable = google.visualization.arrayToDataTable(chartArray);
+      let chart = new google.visualization.BarChart(element);
+      element.style.height = Math.max(400, (dataList.length * 32) + 60) + "px";
+
+      chart.draw(dataTable, {
+        backgroundColor: '#1e1e1e',
+        chartArea: { width: '60%', height: '90%', top: 20, bottom: 40 },
+        hAxis: { title: labelMetric, titleTextStyle: { color: '#aaaaaa' }, minValue: 0, textStyle: { fontSize: 11, color: '#aaaaaa' }, gridlines: { count: 0 }, baselineColor: 'transparent' },
+        vAxis: { textStyle: { fontSize: 11, color: '#e0e0e0' }, gridlines: { count: 0 }, baselineColor: '#444444', interval: 1 },
+        annotations: { textStyle: { fontSize: 12, fontWeight: 'bold', color: '#ffffff' }, alwaysOutside: true },
+        legend: { position: 'none' },
+        tooltip: { isHtml: true },
+        animation: { startup: true, duration: 300, easing: 'out' }
+      });
+    }
+
+    function drawHeatmapWidget(viewKey) {
+      let containerId = viewKey.toLowerCase() + '_heatmap_container';
+      let element = document.getElementById(containerId);
+      if (!element) return;
+
+      let metricKey = METRIC_SELECTIONS[viewKey];
+      let dataList = viewKey === 'MEMBER' ? [...MEMBER_P_ARRAY] : (viewKey === 'GROUP' ? [...GROUP_P_ARRAY] : [...COLOR_P_ARRAY]);
+      let dimField = viewKey === 'MEMBER' ? 'Member' : (viewKey === 'GROUP' ? 'Group' : 'Color');
+
+      dataList.sort((a, b) => b[metricKey] - a[metricKey]);
+      
+      let limitBound = HEATMAP_TOP_N[viewKey] || 20;
+      let topSelection = dataList.slice(0, limitBound);
+
+      if (topSelection.length === 0) { element.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No operational metrics matching thresholds.</div>"; return; }
+
+      let chartData = [[dimField + ' Element', 'Parent Core', 'Size Metric', 'Color Rule Identifier']];
+      let parentNodeName = viewKey + 's Core';
+      chartData.push([parentNodeName, null, 0, 0]);
+      topSelection.forEach((r, idx) => { chartData.push([r[dimField], parentNodeName, r[metricKey], idx + 1]); });
+
+      let dataTable = google.visualization.arrayToDataTable(chartData);
+      let treeMapChart = new google.visualization.TreeMap(element);
+
+      let rankOneValue = topSelection[0][metricKey] || 1;
+      let globalBaseTotal = metricKey === 'qty' ? TOTAL_QTY_GLOBAL : TOTAL_PRICE_GLOBAL;
+
+      let options = {
+        minColor: '#1a365d', midColor: '#2b6cb0', maxColor: '#3182ce',
+        headerHeight: 0, fontColor: 'transparent', fontSize: 1,
+        showScale: false, useWeightedAverageForColor: false, maxPostDepth: 0, hintOpacity: 0
+      };
+
+      google.visualization.events.addListener(treeMapChart, 'ready', function() {
+        let rects = element.getElementsByTagName('rect');
+        let textElements = element.getElementsByTagName('text');
+        for (let t = 0; t < textElements.length; t++) textElements[t].style.display = 'none';
+
+        topSelection.forEach((item, idx) => {
+          let rankNum = idx + 1;
+          let rawLabel = item[dimField];
+          let matchedHex = '#3182ce';
+          
+          if (viewKey === 'MEMBER' || viewKey === 'COLOR') {
+            matchedHex = (COLOR_MAP[viewKey === 'MEMBER' ? item.Color : item[dimField]] || {primary: '#3182ce'}).primary;
+          } else {
+            let maxVal = Math.max(...topSelection.map(i => i[metricKey])) || 1;
+            let minVal = Math.min(...topSelection.map(i => i[metricKey])) || 0;
+            let ratio = 1 - (maxVal === minVal ? 1 : (item[metricKey] - minVal) / (maxVal - minVal));
+            matchedHex = 'rgb(' + Math.round(26 + 112 * ratio) + ',' + Math.round(54 + 126 * ratio) + ',' + Math.round(93 + 155 * ratio) + ')';
+          }
+
+          let currentVal = item[metricKey];
+          let relativeRatioToRankOne = currentVal / rankOneValue; 
+          let pctOfGlobalTotal = globalBaseTotal > 0 ? ((currentVal / globalBaseTotal) * 100).toFixed(1) : '0.0';
+          let formattedValue = metricKey === 'qty' ? currentVal.toLocaleString() : '฿' + currentVal.toLocaleString(undefined, {maximumFractionDigits:0});
+
+          let nameFontSize = Math.max(9, Math.round(16 * relativeRatioToRankOne));
+          let dataFontSize = Math.max(8, Math.round(12 * relativeRatioToRankOne));
+          let lineSpacing = Math.max(10, Math.round(14 * relativeRatioToRankOne));
+
+          let showMetricsRow = (nameFontSize >= 11) || (rankNum <= 10);
+          if (rankNum <= 10 && nameFontSize < 11) {
+            nameFontSize = 11;
+            dataFontSize = 9;
+            lineSpacing = 11;
+          }
+
+          for (let j = 0; j < rects.length; j++) {
+            let width = parseFloat(rects[j].getAttribute('width'));
+            let height = parseFloat(rects[j].getAttribute('height'));
+            let x = parseFloat(rects[j].getAttribute('x'));
+            let y = parseFloat(rects[j].getAttribute('y'));
+
+            if (width > 0 && height > 0 && x >= 0 && y >= 0 && width < element.offsetWidth) {
+              if (!rects[j].hasAttribute('data-custom-rendered')) {
+                rects[j].setAttribute('fill', matchedHex);
+                rects[j].setAttribute('data-custom-rendered', 'true');
+                rects[j].setAttribute('stroke', '#363636');      
+                rects[j].setAttribute('stroke-width', '1.2');     
+
+                let fontColor = '#ffffff';
+                let checkColor = viewKey === 'MEMBER' ? item.Color : item[dimField];
+                if ((viewKey === 'MEMBER' || viewKey === 'COLOR') && (checkColor === 'White' || checkColor === 'Yellow')) fontColor = '#121212';
+
+                let svgNS = "http://www.w3.org/2000/svg";
+                let textGroup = document.createElementNS(svgNS, "text");
+                textGroup.setAttribute("x", (x + width / 2));
+                textGroup.setAttribute("y", (y + height / 2 - (showMetricsRow ? 2 : -4)));
+                textGroup.setAttribute("text-anchor", "middle");
+                textGroup.setAttribute("fill", fontColor);
+                textGroup.setAttribute("style", "font-family: sans-serif; font-weight: bold; pointer-events: none;");
+
+                let tspanLine1 = document.createElementNS(svgNS, "tspan");
+                tspanLine1.textContent = "#" + rankNum + " " + rawLabel;
+                tspanLine1.setAttribute("x", (x + width / 2));
+                tspanLine1.setAttribute("style", "font-size: " + nameFontSize + "px;");
+                textGroup.appendChild(tspanLine1);
+
+                if (showMetricsRow) {
+                  let tspanData = document.createElementNS(svgNS, "tspan");
+                  tspanData.textContent = formattedValue + " (" + pctOfGlobalTotal + "%)";
+                  tspanData.setAttribute("x", (x + width / 2));
+                  tspanData.setAttribute("dy", lineSpacing);
+                  tspanData.setAttribute("style", "font-size: " + dataFontSize + "px; font-weight: normal; opacity: 0.9;");
+                  textGroup.appendChild(tspanData);
+                }
+
+                rects[j].parentNode.appendChild(textGroup);
+                break;
+              }
+            }
+          }
+        });
+      });
+
+      treeMapChart.draw(dataTable, options);
+    }
+
+    function changeTimelineGranularity(grain) {
+      TIMELINE_GRANULARITY = grain;
+      document.getElementById('timeline_daily').classList.toggle('active', grain === 'DAILY');
+      document.getElementById('timeline_monthly').classList.toggle('active', grain === 'MONTHLY');
+      document.getElementById('timeline_yearly').classList.toggle('active', grain === 'YEARLY');
+      drawTimelineChart();
+    }
+
+    function changeTimelineBreakdown(type) {
+      TIMELINE_BREAKDOWN = type;
+      document.getElementById('timeline_breakdown_none').classList.toggle('active', type === 'NONE');
+      document.getElementById('timeline_breakdown_context').classList.toggle('active', type === 'CONTEXT');
+      drawTimelineChart();
+    }
+
+    function changeTimelineCalculationMode(modeState) {
+      TIMELINE_CALC_MODE = modeState;
+      document.getElementById('timeline_mode_discrete').classList.toggle('active', modeState === 'DISCRETE');
+      document.getElementById('timeline_mode_cumulative').classList.toggle('active', modeState === 'CUMULATIVE');
+      drawTimelineChart();
+    }
+
+    function getSelectedTimelineCheckboxes(elementId) {
+      const container = document.getElementById(elementId);
+      if (!container) return new Set();
+      const inputs = container.getElementsByTagName('input');
+      let selected = new Set();
+      for (let i = 0; i < inputs.length; i++) { if (inputs[i].checked) selected.add(inputs[i].value); }
+      return selected;
+    }
+
+    function drawTimelineChart() {
+      let activeTabId = document.querySelector('.tab-content.active').id;
+      let targetContainerId = "";
+      
+      let allowedCheckboxesId = 'timeline_member_checkboxes';
+      let dataFieldMatch = 'Member';
+
+      if (activeTabId === 'member_view_tab') {
+        targetContainerId = 'member_timeline_chart_div';
+        allowedCheckboxesId = 'timeline_member_checkboxes';
+        dataFieldMatch = 'Member';
+      } else if (activeTabId === 'group_view_tab') {
+        targetContainerId = 'group_timeline_chart_div';
+        allowedCheckboxesId = 'timeline_group_checkboxes';
+        dataFieldMatch = 'Group';
+      } else if (activeTabId === 'color_view_tab') {
+        targetContainerId = 'color_timeline_chart_div';
+        allowedCheckboxesId = 'timeline_color_checkboxes';
+        dataFieldMatch = 'Color';
+      } else {
+        return; // Break early if layout defaults to Events tab view matrix
+      }
+
+      const container = document.getElementById(targetContainerId);
+      if (!container) return;
+
+      if (FILTERED_DATA.length === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No active records pass filters.</div>"; return; }
+
+      const activeAllowedFilterSet = getSelectedTimelineCheckboxes(allowedCheckboxesId);
+
+      let timeIntervals = new Set(), entityVolumeMap = {}, rollupDataMap = {};
+
+      FILTERED_DATA.forEach(row => {
+        if (!row['Date']) return;
+        if (row[dataFieldMatch] && activeAllowedFilterSet.size > 0 && !activeAllowedFilterSet.has(row[dataFieldMatch])) return;
+
+        let dateObj = new Date(row['Date']);
+        if (isNaN(dateObj.getTime())) return;
+
+        let intervalStr = TIMELINE_GRANULARITY === 'DAILY' ? dateObj.toISOString().split('T')[0] : 
+                          (TIMELINE_GRANULARITY === 'MONTHLY' ? dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') : String(dateObj.getFullYear()));
+
+        timeIntervals.add(intervalStr);
+        
+        let entityKey = 'Total';
+        if (TIMELINE_BREAKDOWN === 'CONTEXT') {
+          entityKey = row[dataFieldMatch] || 'Unknown';
+        }
+        
+        let qtyVal = Number(row['Quantity']) || Number(row['Qty']) || 0;
+        entityVolumeMap[entityKey] = (entityVolumeMap[entityKey] || 0) + qtyVal;
+
+        if (!rollupDataMap[intervalStr]) rollupDataMap[intervalStr] = {};
+        rollupDataMap[intervalStr][entityKey] = (rollupDataMap[intervalStr][entityKey] || 0) + qtyVal;
+      });
+
+      let sortedIntervals = Array.from(timeIntervals).sort();
+      
+      let sortedSeriesKeys = Object.keys(entityVolumeMap).sort((a, b) => {
+        if (a === 'Total') return -1;
+        if (b === 'Total') return 1;
+        return entityVolumeMap[b] - entityVolumeMap[a];
+      });
+
+      if (sortedIntervals.length === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No timeline matches under active selection.</div>"; return; }
+
+      let chartHeaders = ['Timeline Segment Interval'];
+      sortedSeriesKeys.forEach(k => { chartHeaders.push(k); });
+      let chartArray = [chartHeaders];
+
+      if (TIMELINE_CALC_MODE === 'CUMULATIVE') {
+        let ongoingSum = {}; sortedSeriesKeys.forEach(k => { ongoingSum[k] = 0; });
+        sortedIntervals.forEach(interval => {
+          let rowLine = [interval];
+          sortedSeriesKeys.forEach(key => { ongoingSum[key] += (rollupDataMap[interval][key] || 0); rowLine.push(ongoingSum[key]); });
+          chartArray.push(rowLine);
+        });
+      } else {
+        sortedIntervals.forEach(interval => {
+          let rowLine = [interval];
+          sortedSeriesKeys.forEach(key => { rowLine.push(rollupDataMap[interval][key] || 0); });
+          chartArray.push(rowLine);
+        });
+      }
+
+      let chartDataTable = google.visualization.arrayToDataTable(chartArray);
+      let timelineChart = new google.visualization.LineChart(container);
+      
+      let seriesColors = [];
+      if (TIMELINE_BREAKDOWN === 'CONTEXT') {
+        if (dataFieldMatch === 'Member') {
+          seriesColors = sortedSeriesKeys.map(m => getMemberColorCode(m));
+        } else if (dataFieldMatch === 'Color') {
+          seriesColors = sortedSeriesKeys.map(c => (COLOR_MAP[String(c).trim()] || {primary: '#8ab4f8'}).primary);
+        } else {
+          seriesColors = ['#8ab4f8', '#03dac6', '#ffb74d', '#bb86fc', '#e67e22', '#ff4081', '#aaaaaa', '#27ae60'];
+        }
+      } else {
+        seriesColors = ['#8ab4f8'];
+      }
+
+      timelineChart.draw(chartDataTable, {
+        backgroundColor: '#1e1e1e',
+        title: '(' + TIMELINE_GRANULARITY + " - " + (TIMELINE_CALC_MODE === 'CUMULATIVE' ? 'Cumulative Sum' : 'Interval Mode') + (TIMELINE_BREAKDOWN !== 'NONE' ? ' Breakdown by ' + dataFieldMatch : '') + ')',
+        titleTextStyle: { color: '#aaaaaa', fontSize: 12 },
+        hAxis: { textStyle: { fontSize: 11, color: '#aaaaaa' }, slantedText: true, slantedTextAngle: 30, gridlines: { count: 0 }, baselineColor: '#444444' },
+        vAxis: { title: 'Quantity Metric Sum', titleTextStyle: { color: '#aaaaaa' }, textStyle: { color: '#aaaaaa' }, minValue: 0, gridlines: { count: 0 }, baselineColor: '#444444' },
+        colors: seriesColors,
+        chartArea: { width: '80%', height: '70%' },
+        legend: { position: TIMELINE_BREAKDOWN === 'NONE' ? 'none' : 'right', textStyle: { fontSize: 11, color: '#e0e0e0' } },
+        lineWidth: 3,
+        animation: { startup: true, duration: 400, easing: 'out' }
+      });
+    }
+
+    function switchTab(evt, tabId) {
+      const contents = document.getElementsByClassName("tab-content");
+      for (let i = 0; i < contents.length; i++) contents[i].classList.remove("active");
+      
+      const buttons = document.getElementsByClassName("tab-button");
+      for (let i = 0; i < buttons.length; i++) buttons[i].classList.remove("active");
+
+      document.getElementById(tabId).classList.add("active");
+      evt.currentTarget.classList.add("active");
+
+      renderAllViews();
+    }
+
+  function changeEventsViewGranularity(modeString) {
+        EVENTS_VIEW_MODE = modeString.toUpperCase();
+        
+        let dailyBtn = document.getElementById('events_grain_daily');
+        let monthlyBtn = document.getElementById('events_grain_monthly');
+        if (dailyBtn && monthlyBtn) {
+          dailyBtn.classList.toggle('active', EVENTS_VIEW_MODE === 'DAILY');
+          monthlyBtn.classList.toggle('active', EVENTS_VIEW_MODE === 'MONTHLY');
+        }
+        
+        // Default standard fallback keys when toggling view contexts
+        EVENTS_SORT.column = (EVENTS_VIEW_MODE === 'MONTHLY') ? 'Month' : 'Date';
+        EVENTS_SORT.asc = false;
+        
+        renderEventsPivotTable();
+      }
+  </script>
+</body>
+</html>
