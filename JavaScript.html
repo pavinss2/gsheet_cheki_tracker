@@ -1216,6 +1216,7 @@
     document.getElementById('transaction_form').reset();
     document.getElementById('form_row_index').value = "";
     document.getElementById('modal_title').innerText = "Add Transaction";
+    document.getElementById('form_quantity').value = 1; // Explicitly set default quantity to 1
     
     // Set date default to today in local timezone
     const today = new Date();
@@ -1284,8 +1285,26 @@
       .withSuccessHandler(function(response) {
         if (response.success) {
           closeModal();
-          // Reload dashboard to fetch fresh data
-          window.location.reload();
+          // Load fresh data in-place without page reload to avoid Apps Script frame crash
+          google.script.run
+            .withSuccessHandler(function(sheetData) {
+              ALL_DATA = sheetData.rows;
+              HEADERS = sheetData.headers;
+              applyFilters(); // Re-run pipeline and render views in-place
+              
+              if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerText = "Save Transaction";
+              }
+            })
+            .withFailureHandler(function(err) {
+              alert("Transaction saved, but failed to refresh view: " + err.message);
+              if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerText = "Save Transaction";
+              }
+            })
+            .getSheetData();
         } else {
           alert("Error saving: " + response.error);
           if (saveBtn) {
