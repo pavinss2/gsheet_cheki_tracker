@@ -1309,9 +1309,17 @@
         if (response.success) {
           closeModal();
           
-          if (response.logError) {
-            alert("Warning: Transaction saved, but admin log failed: " + response.logError);
-          }
+          // Background admin log call
+          var logActionType = rowIndex ? "EDIT_TRANSACTION" : "ADD_TRANSACTION";
+          var logActionDetail = rowIndex ?
+            ("Updated transaction at row " + rowIndex + ": Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity) :
+            ("Added transaction: Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity);
+          
+          google.script.run
+            .withFailureHandler(function(err) {
+              console.error("Admin log failed: ", err);
+            })
+            .writeAdminLog(logActionType, logActionDetail);
           
           var newRow = response.row;
           if (rowIndex) {
@@ -1414,11 +1422,17 @@
         if (response.success) {
           closeModal();
           
-          if (response.logError) {
-            alert("Warning: Transaction deleted, but admin log failed: " + response.logError);
-          }
-          
           var deletedRowIndex = parseInt(rowIndex);
+          var deletedRowData = ALL_DATA.find(function(r) { return r._rowIndex === deletedRowIndex; });
+          var memberVal = deletedRowData ? deletedRowData.Member : "";
+          var dateVal = deletedRowData ? (deletedRowData.Date || "") : "";
+          
+          google.script.run
+            .withFailureHandler(function(err) {
+              console.error("Admin log failed: ", err);
+            })
+            .writeAdminLog("DELETE_TRANSACTION", "Deleted transaction: Member=" + memberVal + ", Date=" + dateVal);
+          
           // Remove the deleted row from ALL_DATA
           ALL_DATA = ALL_DATA.filter(function(r) { return r._rowIndex !== deletedRowIndex; });
           
@@ -1747,9 +1761,11 @@
         if (response.success) {
           closeMemberModal();
           
-          if (response.logError) {
-            alert("Warning: Member deleted, but admin log failed: " + response.logError);
-          }
+          google.script.run
+            .withFailureHandler(function(err) {
+              console.error("Admin log failed: ", err);
+            })
+            .writeAdminLog("DELETE_MEMBER", "Deleted member: Name=" + name);
           
           var deletedRowIndex = parseInt(rowIndexVal);
           // Remove from METADATA.members
@@ -1797,9 +1813,11 @@
         if (response.success) {
           closeGroupModal();
           
-          if (response.logError) {
-            alert("Warning: Group deleted, but admin log failed: " + response.logError);
-          }
+          google.script.run
+            .withFailureHandler(function(err) {
+              console.error("Admin log failed: ", err);
+            })
+            .writeAdminLog("DELETE_GROUP", "Deleted group: Name=" + name);
           
           var deletedRowIndex = parseInt(rowIndexVal);
           
@@ -2061,9 +2079,17 @@
         if (response.success) {
           closeMemberModal();
           
-          if (response.logError) {
-            alert("Warning: Member saved, but admin log failed: " + response.logError);
-          }
+          // Background admin log call
+          var logActionType = isEditMode ? "EDIT_MEMBER" : "ADD_MEMBER";
+          var logActionDetail = isEditMode ?
+            ("Updated member at row " + rowIndexVal + ": Name=" + memberData.member_name + ", Group=" + memberData.group) :
+            ("Added member: Name=" + memberData.member_name + ", Group=" + memberData.group);
+          
+          google.script.run
+            .withFailureHandler(function(err) {
+              console.error("Admin log failed: ", err);
+            })
+            .writeAdminLog(logActionType, logActionDetail);
           
           var newMember = response.member;
           if (isEditMode) {
@@ -2138,9 +2164,17 @@
         if (response.success) {
           closeGroupModal();
           
-          if (response.logError) {
-            alert("Warning: Group saved, but admin log failed: " + response.logError);
-          }
+          // Background admin log call
+          var logActionType = isEditMode ? "EDIT_GROUP" : "ADD_GROUP";
+          var logActionDetail = isEditMode ?
+            ("Updated group at row " + rowIndexVal + ": Name=" + groupData.group + ", Company=" + groupData.company) :
+            ("Added group: Name=" + groupData.group + ", Company=" + groupData.company);
+          
+          google.script.run
+            .withFailureHandler(function(err) {
+              console.error("Admin log failed: ", err);
+            })
+            .writeAdminLog(logActionType, logActionDetail);
           
           var newGroupObj = response.group;
           if (isEditMode) {

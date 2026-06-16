@@ -89,7 +89,6 @@ function getSheetRows(ss, sheetName) {
 
 function saveTransaction(rowData, rowIndex) {
   try {
-    var logErr = "";
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName("fact_cheki_transaction") || ss.getActiveSheet();
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -137,9 +136,6 @@ function saveTransaction(rowData, rowIndex) {
       });
       
       sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
-      
-      // Log edit action
-      logErr = writeAdminLog("EDIT_TRANSACTION", "Updated transaction at row " + rowIndex + ": Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity);
     } else {
       // Add new row at the top (Row 2)
       sheet.insertRowBefore(2);
@@ -170,9 +166,6 @@ function saveTransaction(rowData, rowIndex) {
       });
       
       sheet.getRange(2, 1, 1, headers.length).setValues([rowValues]);
-      
-      // Log add action
-      logErr = writeAdminLog("ADD_TRANSACTION", "Added transaction: Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity + ", Price=" + rowData['Total Price (THB)']);
     }
     
     // Fetch and return the newly saved or updated row
@@ -194,7 +187,7 @@ function saveTransaction(rowData, rowIndex) {
       }
     });
     
-    return { success: true, row: obj, logError: logErr };
+    return { success: true, row: obj };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -212,28 +205,8 @@ function deleteTransactionRow(rowIndex) {
     var sheet = ss.getSheetByName("fact_cheki_transaction") || ss.getActiveSheet();
     
     if (rowIndex) {
-      var headers = sheet.getDataRange().getValues()[0];
-      var memberColIdx = headers.indexOf("Member");
-      var dateColIdx = headers.indexOf("Date");
-      
-      var member = "";
-      var date = "";
-      
-      if (memberColIdx > -1) {
-        member = sheet.getRange(rowIndex, memberColIdx + 1).getValue();
-      }
-      if (dateColIdx > -1) {
-        var dateVal = sheet.getRange(rowIndex, dateColIdx + 1).getValue();
-        if (dateVal instanceof Date) {
-          date = Utilities.formatDate(dateVal, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd");
-        } else {
-          date = String(dateVal);
-        }
-      }
-      
       sheet.deleteRow(rowIndex);
-      var logErr = writeAdminLog("DELETE_TRANSACTION", "Deleted transaction: Member=" + member + ", Date=" + date);
-      return { success: true, logError: logErr };
+      return { success: true };
     }
     return { success: false, error: "Missing row index." };
   } catch (e) {
@@ -325,7 +298,6 @@ function addMemberMetadata(memberData) {
     });
     
     sheet.appendRow(rowValues);
-    var logErr = writeAdminLog("ADD_MEMBER", "Added member: Name=" + memberData.member_name + ", Group=" + memberData.group);
     
     // Return the newly created member object
     SpreadsheetApp.flush();
@@ -341,7 +313,7 @@ function addMemberMetadata(memberData) {
         obj[header] = val;
       }
     });
-    return { success: true, member: obj, logError: logErr };
+    return { success: true, member: obj };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -350,7 +322,6 @@ function addMemberMetadata(memberData) {
 function addGroupMetadata(groupData) {
   try {
     ensureCompanyAndGroup(groupData.group, groupData.country, groupData.company);
-    var logErr = writeAdminLog("ADD_GROUP", "Added group: Name=" + groupData.group + ", Company=" + groupData.company);
     
     // Return the newly added group object
     SpreadsheetApp.flush();
@@ -369,7 +340,7 @@ function addGroupMetadata(groupData) {
         obj[header] = val;
       }
     });
-    return { success: true, group: obj, logError: logErr };
+    return { success: true, group: obj };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -411,7 +382,6 @@ function updateMemberMetadata(rowIndex, memberData) {
     });
     
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
-    var logErr = writeAdminLog("EDIT_MEMBER", "Updated member at row " + rowIndex + ": Name=" + memberData.member_name + ", Group=" + memberData.group);
     
     // Return the updated member object
     SpreadsheetApp.flush();
@@ -426,7 +396,7 @@ function updateMemberMetadata(rowIndex, memberData) {
         obj[header] = val;
       }
     });
-    return { success: true, member: obj, logError: logErr };
+    return { success: true, member: obj };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -446,8 +416,7 @@ function deleteMemberMetadata(rowIndex) {
         memberName = sheet.getRange(rowIndex, nameColIdx + 1).getValue();
       }
       sheet.deleteRow(rowIndex);
-      var logErr = writeAdminLog("DELETE_MEMBER", "Deleted member: Name=" + memberName);
-      return { success: true, logError: logErr };
+      return { success: true };
     }
     return { success: false, error: "Missing row index" };
   } catch (e) {
@@ -482,7 +451,7 @@ function updateGroupMetadata(rowIndex, groupData) {
     // Write new values
     groupSheet.getRange(rowIndex, 1, 1, 3).setValues([[newGroup, groupData.country, company]]);
     
-    var logErr = writeAdminLog("EDIT_GROUP", "Updated group at row " + rowIndex + ": Name=" + groupData.group + ", Company=" + groupData.company);
+
     
     // Update members referencing old group
     if (oldGroup && newGroup && oldGroup.toLowerCase() !== newGroup.toLowerCase()) {
@@ -505,7 +474,7 @@ function updateGroupMetadata(rowIndex, groupData) {
     SpreadsheetApp.flush();
     var finalRowValues = groupSheet.getRange(rowIndex, 1, 1, 3).getValues()[0];
     var obj = { _rowIndex: rowIndex, group: finalRowValues[0], country: finalRowValues[1], company: finalRowValues[2] };
-    return { success: true, group: obj, logError: logErr };
+    return { success: true, group: obj };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -521,8 +490,6 @@ function deleteGroupMetadata(rowIndex) {
     
     // Delete group row
     groupSheet.deleteRow(rowIndex);
-    
-    var logErr = writeAdminLog("DELETE_GROUP", "Deleted group: Name=" + groupName);
     
     // Update members to group "N/A"
     if (groupName) {
@@ -541,7 +508,7 @@ function deleteGroupMetadata(rowIndex) {
       }
     }
     
-    return { success: true, logError: logErr };
+    return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
   }
