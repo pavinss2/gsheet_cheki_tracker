@@ -129,6 +129,9 @@ function saveTransaction(rowData, rowIndex) {
       });
       
       sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
+      if (addedOnColIdx > -1) {
+        sheet.getRange(rowIndex, addedOnColIdx + 1).setNumberFormat("yyyy-mm-dd hh:mm:ss");
+      }
       
       // Log edit action
       writeAdminLog("EDIT_TRANSACTION", "Updated transaction at row " + rowIndex + ": Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity);
@@ -162,6 +165,9 @@ function saveTransaction(rowData, rowIndex) {
       });
       
       sheet.getRange(2, 1, 1, headers.length).setValues([rowValues]);
+      if (addedOnColIdx > -1) {
+        sheet.getRange(2, addedOnColIdx + 1).setNumberFormat("yyyy-mm-dd hh:mm:ss");
+      }
       
       // Log add action
       writeAdminLog("ADD_TRANSACTION", "Added transaction: Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity + ", Price=" + rowData['Total Price (THB)']);
@@ -480,6 +486,7 @@ function writeAdminLog(actionType, actionDetail) {
       sheet.appendRow(["action_type", "action_detail", "timestamp"]);
     }
     sheet.appendRow([actionType, actionDetail, new Date()]);
+    sheet.getRange(sheet.getLastRow(), 3).setNumberFormat("yyyy-mm-dd hh:mm:ss");
   } catch (e) {
     console.error("Failed to write admin log: " + e.message);
   }
