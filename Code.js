@@ -555,14 +555,33 @@ function deleteGroupMetadata(rowIndex) {
 function writeAdminLog(actionType, actionDetail) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) {
+      console.error("Failed to write admin log: SpreadsheetApp.getActiveSpreadsheet() returned null");
+      return;
+    }
     var sheet = ss.getSheetByName("fact_admin_log");
     if (!sheet) {
       sheet = ss.insertSheet("fact_admin_log");
       sheet.appendRow(["action_type", "action_detail", "timestamp"]);
     }
-    var timestampStr = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+    
+    var tz = "GMT+7"; // default fallback
+    try {
+      tz = ss.getSpreadsheetTimeZone();
+    } catch (tzErr) {
+      try {
+        tz = Session.getScriptTimeZone();
+      } catch (tzErr2) {}
+    }
+    
+    var timestampStr = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd HH:mm:ss");
     sheet.appendRow([actionType, actionDetail, timestampStr]);
-    sheet.getRange(sheet.getLastRow(), 3).setNumberFormat("@");
+    
+    try {
+      sheet.getRange(sheet.getLastRow(), 3).setNumberFormat("@");
+    } catch (formatErr) {
+      console.error("Failed to set log cell number format: " + formatErr.message);
+    }
   } catch (e) {
     console.error("Failed to write admin log: " + e.message);
   }
