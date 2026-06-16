@@ -2098,7 +2098,10 @@
               METADATA.members[idx] = newMember;
             }
           } else {
-            METADATA.members.push(newMember);
+            METADATA.members.forEach(function(m) {
+              m._rowIndex++;
+            });
+            METADATA.members.unshift(newMember);
           }
           
           renderMetadataTables();
@@ -2193,7 +2196,10 @@
               }
             }
           } else {
-            METADATA.groups.push(newGroupObj);
+            METADATA.groups.forEach(function(g) {
+              g._rowIndex++;
+            });
+            METADATA.groups.unshift(newGroupObj);
           }
           
           renderMetadataTables();

@@ -236,6 +236,7 @@ function ensureCompanyAndGroup(group, country, company) {
   }
   
   // 2. Ensure Group exists in dim_group
+  var groupRowIdx = -1;
   if (group && group.trim()) {
     var groupSheet = ss.getSheetByName("dim_group");
     if (groupSheet) {
@@ -243,11 +244,17 @@ function ensureCompanyAndGroup(group, country, company) {
       var existingGroups = groupData.slice(1).map(function(row) {
         return String(row[0]).trim().toLowerCase();
       });
-      if (existingGroups.indexOf(group.trim().toLowerCase()) === -1) {
-        groupSheet.appendRow([group.trim(), country ? country.trim() : "", company ? company.trim() : ""]);
+      var foundIdx = existingGroups.indexOf(group.trim().toLowerCase());
+      if (foundIdx === -1) {
+        groupSheet.insertRowBefore(2);
+        groupSheet.getRange(2, 1, 1, 3).setValues([[group.trim(), country ? country.trim() : "", company ? company.trim() : ""]]);
+        groupRowIdx = 2;
+      } else {
+        groupRowIdx = foundIdx + 2; // +1 for 1-based index, +1 for header
       }
     }
   }
+  return groupRowIdx;
 }
 
 function addMemberMetadata(memberData) {
@@ -266,27 +273,24 @@ function addMemberMetadata(memberData) {
     }
     
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    var lastRowIdx = sheet.getLastRow();
-    
-    // Read formulas from the preceding row if it exists
+    // Read formulas from Row 2 if it exists
     var formulas = [];
-    if (lastRowIdx >= 2) {
-      formulas = sheet.getRange(lastRowIdx, 1, 1, headers.length).getFormulas()[0];
+    if (sheet.getLastRow() >= 2) {
+      formulas = sheet.getRange(2, 1, 1, headers.length).getFormulas()[0];
     }
     
-    var newRowIdx = lastRowIdx + 1;
+    var newRowIdx = 2;
     var rowValues = [];
     
     headers.forEach(function(header, index) {
       var formula = formulas[index];
       if (formula) {
-        // Translate formula
-        var newFormula = copyFormulaForNewRow(formula, lastRowIdx, newRowIdx);
+        var newFormula = copyFormulaForNewRow(formula, 2, 2);
         rowValues.push(newFormula);
       } else if (header === 'country') {
-        rowValues.push("=VLOOKUP(D" + newRowIdx + ", dim_group!A:C, 2, FALSE)");
+        rowValues.push("=VLOOKUP(D2, dim_group!A:C, 2, FALSE)");
       } else if (header === 'company') {
-        rowValues.push("=VLOOKUP(D" + newRowIdx + ", dim_group!A:C, 3, FALSE)");
+        rowValues.push("=VLOOKUP(D2, dim_group!A:C, 3, FALSE)");
       } else {
         var val = memberData[header];
         if (val === undefined || val === null) {
@@ -297,14 +301,14 @@ function addMemberMetadata(memberData) {
       }
     });
     
-    sheet.appendRow(rowValues);
+    sheet.insertRowBefore(2);
+    sheet.getRange(2, 1, 1, headers.length).setValues([rowValues]);
     
     // Return the newly created member object
     SpreadsheetApp.flush();
-    var newRowIdx = sheet.getLastRow();
-    var finalRowValues = sheet.getRange(newRowIdx, 1, 1, headers.length).getValues()[0];
+    var finalRowValues = sheet.getRange(2, 1, 1, headers.length).getValues()[0];
     var tz = ss.getSpreadsheetTimeZone();
-    var obj = { _rowIndex: newRowIdx };
+    var obj = { _rowIndex: 2 };
     headers.forEach(function(header, index) {
       var val = finalRowValues[index];
       if (val instanceof Date) {
@@ -321,17 +325,19 @@ function addMemberMetadata(memberData) {
 
 function addGroupMetadata(groupData) {
   try {
-    ensureCompanyAndGroup(groupData.group, groupData.country, groupData.company);
+    var groupRowIdx = ensureCompanyAndGroup(groupData.group, groupData.country, groupData.company);
+    if (groupRowIdx === -1) {
+      groupRowIdx = 2; // fallback
+    }
     
     // Return the newly added group object
     SpreadsheetApp.flush();
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var groupSheet = ss.getSheetByName("dim_group");
-    var newRowIdx = groupSheet.getLastRow();
     var headers = groupSheet.getRange(1, 1, 1, groupSheet.getLastColumn()).getValues()[0];
-    var finalRowValues = groupSheet.getRange(newRowIdx, 1, 1, headers.length).getValues()[0];
+    var finalRowValues = groupSheet.getRange(groupRowIdx, 1, 1, headers.length).getValues()[0];
     var tz = ss.getSpreadsheetTimeZone();
-    var obj = { _rowIndex: newRowIdx };
+    var obj = { _rowIndex: groupRowIdx };
     headers.forEach(function(header, index) {
       var val = finalRowValues[index];
       if (val instanceof Date) {
@@ -546,7 +552,8 @@ function writeAdminLog(actionType, actionDetail) {
     }
     
     var timestampStr = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd HH:mm:ss");
-    sheet.appendRow([actionType, actionDetail, timestampStr]);
+    sheet.insertRowBefore(2);
+    sheet.getRange(2, 1, 1, 3).setValues([[actionType, actionDetail, timestampStr]]);
     
     return "";
   } catch (e) {
