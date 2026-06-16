@@ -85,6 +85,9 @@
   </div>
 
   <div id="raw_data_tab" class="tab-content active">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+      <button class="action-btn-primary" onclick="openAddModal()">+ Add Transaction</button>
+    </div>
     <div id="raw_table_container" class="table-wrapper"></div>
   </div>
 
@@ -272,10 +275,109 @@
     </div>
   </div>
 
+  <!-- Add/Edit Transaction Modal -->
+  <div id="transaction_modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal_title">Add Transaction</h3>
+        <button class="close-modal-btn" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="transaction_form" onsubmit="submitTransaction(event)">
+          <input type="hidden" id="form_row_index">
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="form_member">Member <span class="required">*</span></label>
+              <select id="form_member" required onchange="handleFormMemberChange()"></select>
+            </div>
+            
+            <div class="form-group">
+              <label for="form_date">Date <span class="required">*</span></label>
+              <input type="date" id="form_date" required onchange="handleFormDateChange()">
+            </div>
+            
+            <div class="form-group">
+              <label for="form_type">Type <span class="required">*</span></label>
+              <select id="form_type" required onchange="handleFormTypeChange()"></select>
+            </div>
+            
+            <div class="form-group">
+              <label for="form_location">Location <span class="required">*</span></label>
+              <select id="form_location" required></select>
+            </div>
+            
+            <div class="form-group">
+              <label for="form_quantity">Quantity <span class="required">*</span></label>
+              <div class="qty-control-wrapper">
+                <button type="button" class="qty-btn" onclick="adjustFormQty(-1)">-</button>
+                <input type="number" id="form_quantity" min="1" required oninput="handleFormQuantityChange()" style="text-align: center; width: 60px;">
+                <button type="button" class="qty-btn" onclick="adjustFormQty(1)">+</button>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="form_event">Event</label>
+              <input type="text" id="form_event" placeholder="e.g., Catsonic Vol.12">
+            </div>
+            
+            <div class="form-group">
+              <label for="form_description">Description</label>
+              <input type="text" id="form_description" placeholder="e.g., First visit">
+            </div>
+            
+            <div class="form-group">
+              <label for="form_img">Image URL</label>
+              <input type="url" id="form_img" placeholder="https://photos...">
+            </div>
+            
+            <div class="form-group span-2">
+              <label for="form_talk_topic">Talk Topic</label>
+              <input type="text" id="form_talk_topic" placeholder="e.g., Talking about photography">
+            </div>
+          </div>
+
+          <!-- Autofill & Computed Values Preview Section -->
+          <div class="preview-section">
+            <h4>Calculated Preview (Autofills in Google Sheet)</h4>
+            <div class="preview-grid">
+              <div class="preview-item">
+                <span class="preview-label">Color:</span>
+                <span id="preview_color" class="preview-val">-</span>
+              </div>
+              <div class="preview-item">
+                <span class="preview-label">Group:</span>
+                <span id="preview_group" class="preview-val">-</span>
+              </div>
+              <div class="preview-item">
+                <span class="preview-label">Nationality:</span>
+                <span id="preview_nationality" class="preview-val">-</span>
+              </div>
+              <div class="preview-item">
+                <span class="preview-label">Company:</span>
+                <span id="preview_company" class="preview-val">-</span>
+              </div>
+              <div class="preview-item highlight">
+                <span class="preview-label">Total Price:</span>
+                <span id="preview_price" class="preview-val">฿ 0</span>
+               </div>
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button type="button" class="action-btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="submit" id="submit_btn" class="action-btn-primary">Save Transaction</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Load global variables from Google Apps Script -->
   <script>
     const allDataJson = <?!= allDataJson ?>;
     const headersJson = <?!= headersJson ?>;
+    const metadataJson = <?!= metadataJson ?>;
   </script>
 
   <!-- Include Client Javascript Logic -->

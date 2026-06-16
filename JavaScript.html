@@ -70,10 +70,13 @@
   google.charts.load('current', {'packages':['corechart', 'treemap']});
   google.charts.setOnLoadCallback(initializeDashboardEngine);
 
+  let METADATA = {};
+
   function initializeDashboardEngine() {
     try {
       ALL_DATA = allDataJson;
       HEADERS = headersJson;
+      METADATA = metadataJson;
       
       let middleHeaders = HEADERS.filter(h => h !== 'IMG' && h !== 'Talk Topic');
       REORDERED_HEADERS = [];
@@ -450,6 +453,7 @@
       let sortClass = RAW_SORT.column === h ? (RAW_SORT.asc ? 'class="sort-asc"' : 'class="sort-desc"') : '';
       htmlBuffer.push('<th ' + sortClass + ' onclick="handleRawSort(\'' + h + '\')">' + h + '</th>');
     });
+    htmlBuffer.push('<th>Actions</th>');
     htmlBuffer.push("</tr></thead><tbody>");
 
     const renderLimit = Math.min(totalRecords, 200);
@@ -478,6 +482,7 @@
           htmlBuffer.push('<td ' + inlineStyle + '>' + val + '</td>');
         }
       });
+      htmlBuffer.push('<td><button class="edit-row-btn" onclick="openEditModal(event, ' + i + ')">Edit</button></td>');
       htmlBuffer.push("</tr>");
     }
     htmlBuffer.push("</tbody></table>");
@@ -1069,5 +1074,233 @@
     EVENTS_SORT.asc = false;
     
     renderEventsPivotTable();
+  }
+
+  // ==========================================
+  // TRANSACTION ADD/EDIT FORM CONTROLS
+  // ==========================================
+  function populateFormDropdowns() {
+    if (!METADATA || !METADATA.members) return;
+
+    // Members dropdown from dim_member
+    const memberSelect = document.getElementById('form_member');
+    if (memberSelect) {
+      const uniqueMembers = [...new Set(METADATA.members.map(m => m.member_name))].sort();
+      memberSelect.innerHTML = '<option value="">-- Select Member --</option>' + 
+        uniqueMembers.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+    }
+
+    // Types dropdown from dim_type
+    const typeSelect = document.getElementById('form_type');
+    if (typeSelect && METADATA.types) {
+      const uniqueTypes = METADATA.types.map(t => t.Type || t.type).filter(Boolean).sort();
+      typeSelect.innerHTML = uniqueTypes.map(t => '<option value="' + t + '">' + t + '</option>').join('');
+      typeSelect.value = "Cheki";
+    }
+
+    // Locations dropdown
+    const locationSelect = document.getElementById('form_location');
+    if (locationSelect) {
+      let locations = [];
+      if (METADATA.locations && METADATA.locations.length > 0) {
+        locations = METADATA.locations.map(l => l.Location || l.location || l.LocationName).filter(Boolean);
+      } else {
+        // Fallback: extract unique locations from historical data
+        locations = [...new Set(ALL_DATA.map(d => d.Location).filter(Boolean))];
+      }
+      if (!locations.includes("Bangkok")) locations.push("Bangkok");
+      locations.sort();
+      locationSelect.innerHTML = locations.map(l => '<option value="' + l + '">' + l + '</option>').join('');
+      locationSelect.value = "Bangkok";
+    }
+  }
+
+  function lookupMemberMetadata(memberName, dateStr) {
+    if (!memberName || !dateStr || !METADATA.members) return null;
+    
+    const matches = METADATA.members.filter(m => m.member_name === memberName);
+    if (matches.length === 0) return null;
+    
+    // Match row where start_date <= dateStr <= end_date
+    const activeMatch = matches.find(m => {
+      const start = m.start_date || "1001-01-01";
+      const end = m.end_date || "9999-12-31";
+      return dateStr >= start && dateStr <= end;
+    });
+    
+    return activeMatch || matches[0];
+  }
+
+  function updateFormPreview() {
+    const member = document.getElementById('form_member').value;
+    const date = document.getElementById('form_date').value;
+    const type = document.getElementById('form_type').value;
+    const qty = parseInt(document.getElementById('form_quantity').value) || 1;
+    
+    const previewColor = document.getElementById('preview_color');
+    const previewGroup = document.getElementById('preview_group');
+    const previewNationality = document.getElementById('preview_nationality');
+    const previewCompany = document.getElementById('preview_company');
+    const previewPrice = document.getElementById('preview_price');
+    
+    if (!previewColor) return; // Form not rendered yet
+    
+    if (!member || !date) {
+      previewColor.innerText = "-";
+      previewColor.style.color = "";
+      previewGroup.innerText = "-";
+      previewNationality.innerText = "-";
+      previewCompany.innerText = "-";
+      previewPrice.innerText = "฿ 0";
+      return;
+    }
+    
+    const meta = lookupMemberMetadata(member, date);
+    if (meta) {
+      const colorVal = meta.color || "N/A";
+      previewColor.innerText = colorVal;
+      previewColor.setAttribute("style", getTextColorStyle(colorVal));
+      previewGroup.innerText = meta.group || "N/A";
+      previewNationality.innerText = meta.country || "N/A";
+      previewCompany.innerText = meta.company || "N/A";
+      
+      // Calculate Total Price
+      const nationality = meta.country || "";
+      let basePrice = 300;
+      if (type === "Free Cheki" || type === "Free Shame") {
+        basePrice = 0;
+      } else if (nationality.includes("KR")) {
+        basePrice = 220;
+      } else if (type === "Deco Cheki") {
+        basePrice = 500;
+      }
+      const totalPrice = qty * basePrice;
+      previewPrice.innerText = "฿ " + totalPrice.toLocaleString();
+    } else {
+      previewColor.innerText = "-";
+      previewColor.style.color = "";
+      previewGroup.innerText = "-";
+      previewNationality.innerText = "-";
+      previewCompany.innerText = "-";
+      previewPrice.innerText = "฿ 0";
+    }
+  }
+
+  function handleFormMemberChange() {
+    updateFormPreview();
+  }
+
+  function handleFormDateChange() {
+    updateFormPreview();
+  }
+
+  function handleFormTypeChange() {
+    updateFormPreview();
+  }
+
+  function handleFormQuantityChange() {
+    updateFormPreview();
+  }
+
+  function adjustFormQty(amount) {
+    const qtyInput = document.getElementById('form_quantity');
+    if (!qtyInput) return;
+    let val = parseInt(qtyInput.value) || 1;
+    val += amount;
+    if (val < 1) val = 1;
+    qtyInput.value = val;
+    updateFormPreview();
+  }
+
+  function openAddModal() {
+    document.getElementById('transaction_form').reset();
+    document.getElementById('form_row_index').value = "";
+    document.getElementById('modal_title').innerText = "Add Transaction";
+    
+    // Set date default to today in local timezone
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    document.getElementById('form_date').value = yyyy + "-" + mm + "-" + dd;
+    
+    populateFormDropdowns();
+    document.getElementById('transaction_modal').style.display = 'flex';
+    updateFormPreview();
+  }
+
+  function openEditModal(event, index) {
+    if (event) event.stopPropagation();
+    
+    const record = FILTERED_DATA[index];
+    if (!record) return;
+    
+    populateFormDropdowns();
+    
+    document.getElementById('modal_title').innerText = "Edit Transaction";
+    document.getElementById('form_row_index').value = record._rowIndex || "";
+    
+    document.getElementById('form_member').value = record.Member || "";
+    document.getElementById('form_date').value = record.Date || "";
+    document.getElementById('form_type').value = record.Type || "Cheki";
+    document.getElementById('form_location').value = record.Location || "Bangkok";
+    document.getElementById('form_quantity').value = record.Quantity || 1;
+    document.getElementById('form_event').value = record.Event || "";
+    document.getElementById('form_description').value = record.Description || "";
+    document.getElementById('form_img').value = record.IMG || "";
+    document.getElementById('form_talk_topic').value = record['Talk Topic'] || "";
+    
+    document.getElementById('transaction_modal').style.display = 'flex';
+    updateFormPreview();
+  }
+
+  function closeModal() {
+    document.getElementById('transaction_modal').style.display = 'none';
+  }
+
+  function submitTransaction(event) {
+    if (event) event.preventDefault();
+    
+    const saveBtn = document.getElementById('submit_btn');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerText = "Saving...";
+    }
+    
+    const rowIndex = document.getElementById('form_row_index').value;
+    const rowData = {
+      'Member': document.getElementById('form_member').value,
+      'Date': document.getElementById('form_date').value,
+      'Type': document.getElementById('form_type').value,
+      'Location': document.getElementById('form_location').value,
+      'Quantity': parseInt(document.getElementById('form_quantity').value) || 1,
+      'Event': document.getElementById('form_event').value.trim(),
+      'Description': document.getElementById('form_description').value.trim(),
+      'IMG': document.getElementById('form_img').value.trim(),
+      'Talk Topic': document.getElementById('form_talk_topic').value.trim()
+    };
+    
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          closeModal();
+          // Reload dashboard to fetch fresh data
+          window.location.reload();
+        } else {
+          alert("Error saving: " + response.error);
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = "Save Transaction";
+          }
+        }
+      })
+      .withFailureHandler(function(err) {
+        alert("Connection failure: " + err.message);
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = "Save Transaction";
+        }
+      })
+      .saveTransaction(rowData, rowIndex ? parseInt(rowIndex) : null);
   }
 </script>
