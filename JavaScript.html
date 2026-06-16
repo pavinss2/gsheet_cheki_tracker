@@ -272,6 +272,7 @@
     sortRawDataStructure();
     sortEventsDataStructure();
     renderAllViews();
+    hideLoading();
   }
 
   function filterByCell(columnName, value) {
@@ -1277,6 +1278,8 @@
       saveBtn.innerText = "Saving...";
     }
     
+    showLoading("Saving Transaction...");
+    
     const rowIndex = document.getElementById('form_row_index').value;
     const rowData = {
       'Member': document.getElementById('form_member').value,
@@ -1389,6 +1392,8 @@
     }
     if (saveBtn) saveBtn.disabled = true;
     
+    showLoading("Deleting Transaction...");
+    
     google.script.run
       .withSuccessHandler(function(response) {
         if (response.success) {
@@ -1432,5 +1437,21 @@
         if (saveBtn) saveBtn.disabled = false;
       })
       .deleteTransactionRow(parseInt(rowIndex));
+  }
+
+  function showLoading(text) {
+    const spinner = document.getElementById('loading_spinner');
+    if (spinner) {
+      if (text) {
+        const textEl = spinner.querySelector('.spinner-text');
+        if (textEl) textEl.innerText = text;
+      }
+      spinner.style.display = 'flex';
+    }
+  }
+
+  function hideLoading() {
+    const spinner = document.getElementById('loading_spinner');
+    if (spinner) spinner.style.display = 'none';
   }
 </script>
