@@ -137,9 +137,6 @@ function saveTransaction(rowData, rowIndex) {
       });
       
       sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
-      if (addedOnColIdx > -1) {
-        sheet.getRange(rowIndex, addedOnColIdx + 1).setNumberFormat("@");
-      }
       
       // Log edit action
       logErr = writeAdminLog("EDIT_TRANSACTION", "Updated transaction at row " + rowIndex + ": Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity);
@@ -173,9 +170,6 @@ function saveTransaction(rowData, rowIndex) {
       });
       
       sheet.getRange(2, 1, 1, headers.length).setValues([rowValues]);
-      if (addedOnColIdx > -1) {
-        sheet.getRange(2, addedOnColIdx + 1).setNumberFormat("@");
-      }
       
       // Log add action
       logErr = writeAdminLog("ADD_TRANSACTION", "Added transaction: Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity + ", Price=" + rowData['Total Price (THB)']);
@@ -587,11 +581,6 @@ function writeAdminLog(actionType, actionDetail) {
     var timestampStr = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd HH:mm:ss");
     sheet.appendRow([actionType, actionDetail, timestampStr]);
     
-    try {
-      sheet.getRange(sheet.getLastRow(), 3).setNumberFormat("@");
-    } catch (formatErr) {
-      console.error("Failed to set log cell number format: " + formatErr.message);
-    }
     return "";
   } catch (e) {
     console.error("Failed to write admin log: " + e.message);
