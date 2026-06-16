@@ -32,7 +32,11 @@ function getSheetData() {
       headers.forEach(function(header, index) {
         var val = row[index];
         if (val instanceof Date) {
-          obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd");
+          if (header === 'added_on' || header === 'timestamp') {
+            obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd HH:mm:ss");
+          } else {
+            obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd");
+          }
         } else {
           obj[header] = val;
         }
@@ -70,7 +74,11 @@ function getSheetRows(ss, sheetName) {
     headers.forEach(function(header, index) {
       var val = row[index];
       if (val instanceof Date) {
-        obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd");
+        if (header === 'added_on' || header === 'timestamp') {
+          obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd HH:mm:ss");
+        } else {
+          obj[header] = Utilities.formatDate(val, tz, "yyyy-MM-dd");
+        }
       } else {
         obj[header] = val;
       }
