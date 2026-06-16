@@ -89,6 +89,7 @@ function getSheetRows(ss, sheetName) {
 
 function saveTransaction(rowData, rowIndex) {
   try {
+    var logErr = "";
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName("fact_cheki_transaction") || ss.getActiveSheet();
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -141,7 +142,7 @@ function saveTransaction(rowData, rowIndex) {
       }
       
       // Log edit action
-      writeAdminLog("EDIT_TRANSACTION", "Updated transaction at row " + rowIndex + ": Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity);
+      logErr = writeAdminLog("EDIT_TRANSACTION", "Updated transaction at row " + rowIndex + ": Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity);
     } else {
       // Add new row at the top (Row 2)
       sheet.insertRowBefore(2);
@@ -177,7 +178,7 @@ function saveTransaction(rowData, rowIndex) {
       }
       
       // Log add action
-      writeAdminLog("ADD_TRANSACTION", "Added transaction: Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity + ", Price=" + rowData['Total Price (THB)']);
+      logErr = writeAdminLog("ADD_TRANSACTION", "Added transaction: Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity + ", Price=" + rowData['Total Price (THB)']);
     }
     
     // Fetch and return the newly saved or updated row
@@ -199,7 +200,7 @@ function saveTransaction(rowData, rowIndex) {
       }
     });
     
-    return { success: true, row: obj };
+    return { success: true, row: obj, logError: logErr };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -237,8 +238,8 @@ function deleteTransactionRow(rowIndex) {
       }
       
       sheet.deleteRow(rowIndex);
-      writeAdminLog("DELETE_TRANSACTION", "Deleted transaction: Member=" + member + ", Date=" + date);
-      return { success: true };
+      var logErr = writeAdminLog("DELETE_TRANSACTION", "Deleted transaction: Member=" + member + ", Date=" + date);
+      return { success: true, logError: logErr };
     }
     return { success: false, error: "Missing row index." };
   } catch (e) {
@@ -330,7 +331,7 @@ function addMemberMetadata(memberData) {
     });
     
     sheet.appendRow(rowValues);
-    writeAdminLog("ADD_MEMBER", "Added member: Name=" + memberData.member_name + ", Group=" + memberData.group);
+    var logErr = writeAdminLog("ADD_MEMBER", "Added member: Name=" + memberData.member_name + ", Group=" + memberData.group);
     
     // Return the newly created member object
     SpreadsheetApp.flush();
@@ -346,7 +347,7 @@ function addMemberMetadata(memberData) {
         obj[header] = val;
       }
     });
-    return { success: true, member: obj };
+    return { success: true, member: obj, logError: logErr };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -355,7 +356,7 @@ function addMemberMetadata(memberData) {
 function addGroupMetadata(groupData) {
   try {
     ensureCompanyAndGroup(groupData.group, groupData.country, groupData.company);
-    writeAdminLog("ADD_GROUP", "Added group: Name=" + groupData.group + ", Company=" + groupData.company);
+    var logErr = writeAdminLog("ADD_GROUP", "Added group: Name=" + groupData.group + ", Company=" + groupData.company);
     
     // Return the newly added group object
     SpreadsheetApp.flush();
@@ -374,7 +375,7 @@ function addGroupMetadata(groupData) {
         obj[header] = val;
       }
     });
-    return { success: true, group: obj };
+    return { success: true, group: obj, logError: logErr };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -416,7 +417,7 @@ function updateMemberMetadata(rowIndex, memberData) {
     });
     
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
-    writeAdminLog("EDIT_MEMBER", "Updated member at row " + rowIndex + ": Name=" + memberData.member_name + ", Group=" + memberData.group);
+    var logErr = writeAdminLog("EDIT_MEMBER", "Updated member at row " + rowIndex + ": Name=" + memberData.member_name + ", Group=" + memberData.group);
     
     // Return the updated member object
     SpreadsheetApp.flush();
@@ -431,7 +432,7 @@ function updateMemberMetadata(rowIndex, memberData) {
         obj[header] = val;
       }
     });
-    return { success: true, member: obj };
+    return { success: true, member: obj, logError: logErr };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -451,8 +452,8 @@ function deleteMemberMetadata(rowIndex) {
         memberName = sheet.getRange(rowIndex, nameColIdx + 1).getValue();
       }
       sheet.deleteRow(rowIndex);
-      writeAdminLog("DELETE_MEMBER", "Deleted member: Name=" + memberName);
-      return { success: true };
+      var logErr = writeAdminLog("DELETE_MEMBER", "Deleted member: Name=" + memberName);
+      return { success: true, logError: logErr };
     }
     return { success: false, error: "Missing row index" };
   } catch (e) {
@@ -487,7 +488,7 @@ function updateGroupMetadata(rowIndex, groupData) {
     // Write new values
     groupSheet.getRange(rowIndex, 1, 1, 3).setValues([[newGroup, groupData.country, company]]);
     
-    writeAdminLog("EDIT_GROUP", "Updated group at row " + rowIndex + ": Name=" + groupData.group + ", Company=" + groupData.company);
+    var logErr = writeAdminLog("EDIT_GROUP", "Updated group at row " + rowIndex + ": Name=" + groupData.group + ", Company=" + groupData.company);
     
     // Update members referencing old group
     if (oldGroup && newGroup && oldGroup.toLowerCase() !== newGroup.toLowerCase()) {
@@ -510,7 +511,7 @@ function updateGroupMetadata(rowIndex, groupData) {
     SpreadsheetApp.flush();
     var finalRowValues = groupSheet.getRange(rowIndex, 1, 1, 3).getValues()[0];
     var obj = { _rowIndex: rowIndex, group: finalRowValues[0], country: finalRowValues[1], company: finalRowValues[2] };
-    return { success: true, group: obj };
+    return { success: true, group: obj, logError: logErr };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -527,7 +528,7 @@ function deleteGroupMetadata(rowIndex) {
     // Delete group row
     groupSheet.deleteRow(rowIndex);
     
-    writeAdminLog("DELETE_GROUP", "Deleted group: Name=" + groupName);
+    var logErr = writeAdminLog("DELETE_GROUP", "Deleted group: Name=" + groupName);
     
     // Update members to group "N/A"
     if (groupName) {
@@ -546,7 +547,7 @@ function deleteGroupMetadata(rowIndex) {
       }
     }
     
-    return { success: true };
+    return { success: true, logError: logErr };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -556,10 +557,19 @@ function writeAdminLog(actionType, actionDetail) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     if (!ss) {
-      console.error("Failed to write admin log: SpreadsheetApp.getActiveSpreadsheet() returned null");
-      return;
+      return "SpreadsheetApp.getActiveSpreadsheet() returned null";
     }
-    var sheet = ss.getSheetByName("fact_admin_log");
+    
+    var sheets = ss.getSheets();
+    var sheet = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var name = sheets[i].getName().trim().toLowerCase();
+      if (name === "fact_admin_log" || name === "fact_admin_logs") {
+        sheet = sheets[i];
+        break;
+      }
+    }
+    
     if (!sheet) {
       sheet = ss.insertSheet("fact_admin_log");
       sheet.appendRow(["action_type", "action_detail", "timestamp"]);
@@ -582,7 +592,9 @@ function writeAdminLog(actionType, actionDetail) {
     } catch (formatErr) {
       console.error("Failed to set log cell number format: " + formatErr.message);
     }
+    return "";
   } catch (e) {
     console.error("Failed to write admin log: " + e.message);
+    return e.message;
   }
 }

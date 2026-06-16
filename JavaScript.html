@@ -1309,6 +1309,10 @@
         if (response.success) {
           closeModal();
           
+          if (response.logError) {
+            alert("Warning: Transaction saved, but admin log failed: " + response.logError);
+          }
+          
           var newRow = response.row;
           if (rowIndex) {
             // Edit mode: find and replace in ALL_DATA
@@ -1409,6 +1413,10 @@
       .withSuccessHandler(function(response) {
         if (response.success) {
           closeModal();
+          
+          if (response.logError) {
+            alert("Warning: Transaction deleted, but admin log failed: " + response.logError);
+          }
           
           var deletedRowIndex = parseInt(rowIndex);
           // Remove the deleted row from ALL_DATA
@@ -1739,6 +1747,10 @@
         if (response.success) {
           closeMemberModal();
           
+          if (response.logError) {
+            alert("Warning: Member deleted, but admin log failed: " + response.logError);
+          }
+          
           var deletedRowIndex = parseInt(rowIndexVal);
           // Remove from METADATA.members
           METADATA.members = METADATA.members.filter(function(m) { return m._rowIndex !== deletedRowIndex; });
@@ -1784,6 +1796,10 @@
       .withSuccessHandler(function(response) {
         if (response.success) {
           closeGroupModal();
+          
+          if (response.logError) {
+            alert("Warning: Group deleted, but admin log failed: " + response.logError);
+          }
           
           var deletedRowIndex = parseInt(rowIndexVal);
           
@@ -2045,6 +2061,10 @@
         if (response.success) {
           closeMemberModal();
           
+          if (response.logError) {
+            alert("Warning: Member saved, but admin log failed: " + response.logError);
+          }
+          
           var newMember = response.member;
           if (isEditMode) {
             var idx = METADATA.members.findIndex(function(m) { return m._rowIndex === newMember._rowIndex; });
@@ -2117,6 +2137,10 @@
       .withSuccessHandler(function(response) {
         if (response.success) {
           closeGroupModal();
+          
+          if (response.logError) {
+            alert("Warning: Group saved, but admin log failed: " + response.logError);
+          }
           
           var newGroupObj = response.group;
           if (isEditMode) {
