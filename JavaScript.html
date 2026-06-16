@@ -72,8 +72,8 @@
 
   function initializeDashboardEngine() {
     try {
-      ALL_DATA = <?!= allDataJson ?>;
-      HEADERS = <?!= headersJson ?>;
+      ALL_DATA = allDataJson;
+      HEADERS = headersJson;
       
       let middleHeaders = HEADERS.filter(h => h !== 'IMG' && h !== 'Talk Topic');
       REORDERED_HEADERS = [];
