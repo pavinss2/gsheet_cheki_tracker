@@ -114,18 +114,21 @@ function saveTransaction(rowData, rowIndex) {
       
       sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
     } else {
-      // Add new row
-      var targetRowIndex = sheet.getLastRow() + 1;
-      var lastRowIndex = sheet.getLastRow();
-      var lastRowFormulas = [];
-      if (lastRowIndex >= 2) {
-        lastRowFormulas = sheet.getRange(lastRowIndex, 1, 1, headers.length).getFormulas()[0];
+      // Add new row at the top (Row 2)
+      // Insert a blank row before row 2 (header is row 1)
+      sheet.insertRowBefore(2);
+      
+      // Get formulas from the pushed-down data row (which is now row 3)
+      var formulas = [];
+      if (sheet.getLastRow() >= 3) {
+        formulas = sheet.getRange(3, 1, 1, headers.length).getFormulas()[0];
       }
       
       headers.forEach(function(header, index) {
-        var formula = lastRowFormulas[index];
+        var formula = formulas[index];
         if (formula) {
-          var newFormula = copyFormulaForNewRow(formula, lastRowIndex, targetRowIndex);
+          // Translate formula from row 3 references to row 2 references
+          var newFormula = copyFormulaForNewRow(formula, 3, 2);
           rowValues.push(newFormula);
         } else if (header === 'Month') {
           rowValues.push(monthVal);
@@ -136,7 +139,8 @@ function saveTransaction(rowData, rowIndex) {
         }
       });
       
-      sheet.getRange(targetRowIndex, 1, 1, headers.length).setValues([rowValues]);
+      // Write the new values to row 2
+      sheet.getRange(2, 1, 1, headers.length).setValues([rowValues]);
     }
     
     return { success: true };
