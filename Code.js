@@ -112,7 +112,15 @@ function saveTransaction(rowData, rowIndex) {
       // Determine if we need to preserve or write added_on timestamp
       if (addedOnColIdx > -1) {
         var existingAddedOn = sheet.getRange(rowIndex, addedOnColIdx + 1).getValue();
-        rowData['added_on'] = existingAddedOn ? existingAddedOn : new Date();
+        if (existingAddedOn) {
+          if (existingAddedOn instanceof Date) {
+            rowData['added_on'] = Utilities.formatDate(existingAddedOn, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+          } else {
+            rowData['added_on'] = existingAddedOn;
+          }
+        } else {
+          rowData['added_on'] = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+        }
       }
       
       headers.forEach(function(header, index) {
@@ -130,7 +138,7 @@ function saveTransaction(rowData, rowIndex) {
       
       sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
       if (addedOnColIdx > -1) {
-        sheet.getRange(rowIndex, addedOnColIdx + 1).setNumberFormat("yyyy-mm-dd hh:mm:ss");
+        sheet.getRange(rowIndex, addedOnColIdx + 1).setNumberFormat("@");
       }
       
       // Log edit action
@@ -141,7 +149,7 @@ function saveTransaction(rowData, rowIndex) {
       
       // Generate timestamp for new row
       if (addedOnColIdx > -1) {
-        rowData['added_on'] = new Date();
+        rowData['added_on'] = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
       }
       
       // Get formulas from the pushed-down data row (which is now row 3)
@@ -166,7 +174,7 @@ function saveTransaction(rowData, rowIndex) {
       
       sheet.getRange(2, 1, 1, headers.length).setValues([rowValues]);
       if (addedOnColIdx > -1) {
-        sheet.getRange(2, addedOnColIdx + 1).setNumberFormat("yyyy-mm-dd hh:mm:ss");
+        sheet.getRange(2, addedOnColIdx + 1).setNumberFormat("@");
       }
       
       // Log add action
@@ -485,8 +493,9 @@ function writeAdminLog(actionType, actionDetail) {
       sheet = ss.insertSheet("fact_admin_log");
       sheet.appendRow(["action_type", "action_detail", "timestamp"]);
     }
-    sheet.appendRow([actionType, actionDetail, new Date()]);
-    sheet.getRange(sheet.getLastRow(), 3).setNumberFormat("yyyy-mm-dd hh:mm:ss");
+    var timestampStr = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+    sheet.appendRow([actionType, actionDetail, timestampStr]);
+    sheet.getRange(sheet.getLastRow(), 3).setNumberFormat("@");
   } catch (e) {
     console.error("Failed to write admin log: " + e.message);
   }
