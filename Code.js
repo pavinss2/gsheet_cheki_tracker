@@ -82,9 +82,11 @@ function getSheetRows(ss, sheetName) {
 function saveTransaction(rowData, rowIndex) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getActiveSheet();
+    var sheet = ss.getSheetByName("fact_cheki_transaction") || ss.getActiveSheet();
     var data = sheet.getDataRange().getValues();
     var headers = data[0];
+    
+    var addedOnColIdx = headers.indexOf("added_on");
     
     var rowValues = [];
     var dateVal = rowData['Date'];
@@ -98,6 +100,12 @@ function saveTransaction(rowData, rowIndex) {
     if (rowIndex) {
       // Update existing row
       var existingFormulas = sheet.getRange(rowIndex, 1, 1, headers.length).getFormulas()[0];
+      
+      // Determine if we need to preserve or write added_on timestamp
+      if (addedOnColIdx > -1) {
+        var existingAddedOn = sheet.getRange(rowIndex, addedOnColIdx + 1).getValue();
+        rowData['added_on'] = existingAddedOn ? existingAddedOn : new Date();
+      }
       
       headers.forEach(function(header, index) {
         var formula = existingFormulas[index];
@@ -113,10 +121,17 @@ function saveTransaction(rowData, rowIndex) {
       });
       
       sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
+      
+      // Log edit action
+      writeAdminLog("EDIT_TRANSACTION", "Updated transaction at row " + rowIndex + ": Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity);
     } else {
       // Add new row at the top (Row 2)
-      // Insert a blank row before row 2 (header is row 1)
       sheet.insertRowBefore(2);
+      
+      // Generate timestamp for new row
+      if (addedOnColIdx > -1) {
+        rowData['added_on'] = new Date();
+      }
       
       // Get formulas from the pushed-down data row (which is now row 3)
       var formulas = [];
@@ -127,7 +142,6 @@ function saveTransaction(rowData, rowIndex) {
       headers.forEach(function(header, index) {
         var formula = formulas[index];
         if (formula) {
-          // Translate formula from row 3 references to row 2 references
           var newFormula = copyFormulaForNewRow(formula, 3, 2);
           rowValues.push(newFormula);
         } else if (header === 'Month') {
@@ -139,8 +153,10 @@ function saveTransaction(rowData, rowIndex) {
         }
       });
       
-      // Write the new values to row 2
       sheet.getRange(2, 1, 1, headers.length).setValues([rowValues]);
+      
+      // Log add action
+      writeAdminLog("ADD_TRANSACTION", "Added transaction: Member=" + rowData.Member + ", Date=" + rowData.Date + ", Qty=" + rowData.Quantity + ", Price=" + rowData['Total Price (THB)']);
     }
     
     return { success: true };
@@ -158,10 +174,30 @@ function copyFormulaForNewRow(formula, lastRowIndex, newRowIndex) {
 function deleteTransactionRow(rowIndex) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getActiveSheet();
+    var sheet = ss.getSheetByName("fact_cheki_transaction") || ss.getActiveSheet();
     
     if (rowIndex) {
+      var headers = sheet.getDataRange().getValues()[0];
+      var memberColIdx = headers.indexOf("Member");
+      var dateColIdx = headers.indexOf("Date");
+      
+      var member = "";
+      var date = "";
+      
+      if (memberColIdx > -1) {
+        member = sheet.getRange(rowIndex, memberColIdx + 1).getValue();
+      }
+      if (dateColIdx > -1) {
+        var dateVal = sheet.getRange(rowIndex, dateColIdx + 1).getValue();
+        if (dateVal instanceof Date) {
+          date = Utilities.formatDate(dateVal, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd");
+        } else {
+          date = String(dateVal);
+        }
+      }
+      
       sheet.deleteRow(rowIndex);
+      writeAdminLog("DELETE_TRANSACTION", "Deleted transaction: Member=" + member + ", Date=" + date);
       return { success: true };
     }
     return { success: false, error: "Missing row index." };
@@ -255,6 +291,7 @@ function addMemberMetadata(memberData) {
     });
     
     sheet.appendRow(rowValues);
+    writeAdminLog("ADD_MEMBER", "Added member: Name=" + memberData.member_name + ", Group=" + memberData.group);
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
@@ -264,6 +301,7 @@ function addMemberMetadata(memberData) {
 function addGroupMetadata(groupData) {
   try {
     ensureCompanyAndGroup(groupData.group, groupData.country, groupData.company);
+    writeAdminLog("ADD_GROUP", "Added group: Name=" + groupData.group + ", Company=" + groupData.company);
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
@@ -307,6 +345,7 @@ function updateMemberMetadata(rowIndex, memberData) {
     });
     
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowValues]);
+    writeAdminLog("EDIT_MEMBER", "Updated member at row " + rowIndex + ": Name=" + memberData.member_name + ", Group=" + memberData.group);
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
@@ -320,7 +359,14 @@ function deleteMemberMetadata(rowIndex) {
     if (!sheet) return { success: false, error: "dim_member sheet not found" };
     
     if (rowIndex) {
+      var headers = sheet.getDataRange().getValues()[0];
+      var nameColIdx = headers.indexOf("member_name");
+      var memberName = "";
+      if (nameColIdx > -1) {
+        memberName = sheet.getRange(rowIndex, nameColIdx + 1).getValue();
+      }
       sheet.deleteRow(rowIndex);
+      writeAdminLog("DELETE_MEMBER", "Deleted member: Name=" + memberName);
       return { success: true };
     }
     return { success: false, error: "Missing row index" };
@@ -356,6 +402,8 @@ function updateGroupMetadata(rowIndex, groupData) {
     // Write new values
     groupSheet.getRange(rowIndex, 1, 1, 3).setValues([[newGroup, groupData.country, company]]);
     
+    writeAdminLog("EDIT_GROUP", "Updated group at row " + rowIndex + ": Name=" + groupData.group + ", Company=" + groupData.company);
+    
     // Update members referencing old group
     if (oldGroup && newGroup && oldGroup.toLowerCase() !== newGroup.toLowerCase()) {
       var memberSheet = ss.getSheetByName("dim_member");
@@ -390,6 +438,8 @@ function deleteGroupMetadata(rowIndex) {
     // Delete group row
     groupSheet.deleteRow(rowIndex);
     
+    writeAdminLog("DELETE_GROUP", "Deleted group: Name=" + groupName);
+    
     // Update members to group "N/A"
     if (groupName) {
       var memberSheet = ss.getSheetByName("dim_member");
@@ -410,5 +460,19 @@ function deleteGroupMetadata(rowIndex) {
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
+  }
+}
+
+function writeAdminLog(actionType, actionDetail) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName("fact_admin_log");
+    if (!sheet) {
+      sheet = ss.insertSheet("fact_admin_log");
+      sheet.appendRow(["action_type", "action_detail", "timestamp"]);
+    }
+    sheet.appendRow([actionType, actionDetail, new Date()]);
+  } catch (e) {
+    console.error("Failed to write admin log: " + e.message);
   }
 }
