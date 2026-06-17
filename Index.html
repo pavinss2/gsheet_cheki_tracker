@@ -19,37 +19,6 @@
     <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAACv0lEQVR4nO2XwU/TUBzHv++VN5cs8aIxYThqpolsByP/ARc8mmyY6EETOGA46MWkJP4J7OCBGC8qLCYSL+yAxoP7Azwuk2Ts4AYIHEiQQWLWlrX7eRhdJmyvpQVP+17atK+/93nv9+u3vwJ99dXXxYq5DUilUhSJREBErQcYAxG1j/8EY61wJ6870nUduVxOOqf0ZiaToUQigUKhACFEz4lcxQCrYWF09C7K5TI0bbbnvAOyOENDUczNzSEajSKZTMK2bXDO4HAxhta5E76T9/gaNQmKoqBUKiGfz2NmZkbKLgXSdR2x4RimJqeQzWZh23Y7LV5F1AKanp7GYnYRuq77BwIYQMD6+jqWlpbORnJCY2NjBILrgriXYKFQKAgLAEAI4WmcJyDfxexD8pR5SJJ6JUEKa4WxqYHN3+VAqZUDuWzMeOwJ3R9+iiPLAggQYgCft95S/tcH31AuRQ2AAazLVt28eofSN55j+7AKix2BgYEbA0jFnqFSL1B1b9UXlHvKOn2mQwSCAgW75ha+7WYBEMavTUK9fLvrAs4HSJKy6t4q+7L1nh7feok/Vg2EJu5df4SPlQwqez8uJmWOZfTiWtl4wy7xCD2MvwAI+FR9hZXN1xdX1O23XfLafz/Iof7zEIQmvm68CwTjCgSgVT8Sd93er7Dt/UpQjrakxujYfOBln0HuTn1OJu31mywFIhA4Z7AsKzBQo2F56hSkNcQZh2GYUFUV8/PzZNs2GOe9i9zxrY5zp/1QVRWmaYBxOZQcSOGo1+vQNA0jIyOB+qGFhQUMRgehcMU/EDUJQggUi0VWLBbPBNJNqqpSk5rSMdIaEkLg4KAWGMRRrVZDSMh7K+kO7evsQNNmMTHxgMLhsO++iDEGwzAQj8extrYmH+sWLJ1OS2G6/Q6dmuG4dTVNE8vLy//T1vrqq69T+gtEQgkEKnBqEAAAAABJRU5ErkJggg==" alt="Logo" class="app-logo">
     <span class="app-title">Cheki Database</span>
   </div>
-  <div class="kpi-container">
-    <div class="kpi-card">
-      <div class="kpi-title">Total Cheki</div>
-      <div id="kpi_total_qty" class="kpi-value">0</div>
-      <div id="kpi_total_qty_subtext" class="kpi-subtext">฿ 0</div>
-    </div>
-    <div class="kpi-card accent-purple">
-      <div class="kpi-title">Unique Idol Count</div>
-      <div style="margin-top: 8px;">
-        <div class="kpi-dual-row"><span id="kpi_unique_members">0</span>&nbsp;Members</div>
-        <div class="kpi-dual-row"><span id="kpi_unique_groups">0</span>&nbsp;Groups</div>
-      </div>
-    </div>
-    <div class="kpi-card accent-green">
-      <div class="kpi-title">Top 3 Members</div>
-      <div id="kpi_top_members" class="kpi-subtext">Calculating variables...</div>
-    </div>
-    <div class="kpi-card accent-orange">
-      <div class="kpi-title">Top 3 Groups</div>
-      <div id="kpi_top_groups" class="kpi-subtext">Calculating variables...</div>
-    </div>
-    <div class="kpi-card accent-teal">
-      <div class="kpi-title">Types</div>
-      <div id="kpi_top_types" class="kpi-subtext">Calculating variables...</div>
-    </div>
-    <div class="kpi-card accent-pink">
-      <div class="kpi-title">Locations</div>
-      <div id="kpi_top_locations" class="kpi-subtext">Calculating variables...</div>
-    </div>
-  </div>
-
   <div class="filter-panel">
     <div class="filter-group">
       <label>Year</label>
@@ -83,14 +52,58 @@
   </div>
 
   <div class="tab-container">
-    <button class="tab-button active" onclick="switchTab(event, 'raw_data_tab')">Raw Data</button>
-    <button class="tab-button" onclick="switchTab(event, 'member_view_tab')">Member View</button>
-    <button class="tab-button" onclick="switchTab(event, 'group_view_tab')">Group View</button>
-    <button class="tab-button" onclick="switchTab(event, 'color_view_tab')">Color View</button>
+    <button class="tab-button active" onclick="switchTab(event, 'home_view_tab')">Home</button>
+    <button class="tab-button" onclick="switchTab(event, 'raw_data_tab')">Raw Data</button>
+    <button class="tab-button" onclick="switchTab(event, 'analytics_tab')">Analytics</button>
     <button class="tab-button" onclick="switchTab(event, 'events_view_tab')">Events</button>
   </div>
 
-  <div id="raw_data_tab" class="tab-content active">
+  <div id="home_view_tab" class="tab-content active">
+    <!-- Relocated KPI Cards + Two New Scorecards -->
+    <div class="kpi-container">
+      <div class="kpi-card">
+        <div class="kpi-title">Total Cheki</div>
+        <div id="kpi_total_qty" class="kpi-value">0</div>
+        <div id="kpi_total_qty_subtext" class="kpi-subtext">฿ 0</div>
+      </div>
+      <div class="kpi-card accent-purple">
+        <div class="kpi-title">Unique Idol Count</div>
+        <div style="margin-top: 8px;">
+          <div class="kpi-dual-row"><span id="kpi_unique_members">0</span>&nbsp;Members</div>
+          <div class="kpi-dual-row"><span id="kpi_unique_groups">0</span>&nbsp;Groups</div>
+        </div>
+      </div>
+      <div class="kpi-card accent-green">
+        <div class="kpi-title">Top 3 Members</div>
+        <div id="kpi_top_members" class="kpi-subtext">Calculating variables...</div>
+      </div>
+      <div class="kpi-card accent-orange">
+        <div class="kpi-title">Top 3 Groups</div>
+        <div id="kpi_top_groups" class="kpi-subtext">Calculating variables...</div>
+      </div>
+      <div class="kpi-card accent-teal">
+        <div class="kpi-title">Top 3 Color</div>
+        <div id="kpi_top_colors" class="kpi-subtext">Calculating variables...</div>
+      </div>
+      <div class="kpi-card accent-pink">
+        <div class="kpi-title">Top 3 Company</div>
+        <div id="kpi_top_companies" class="kpi-subtext">Calculating variables...</div>
+      </div>
+    </div>
+
+    <!-- Home Timeline Section -->
+    <div class="view-header-actions" style="margin-top: 20px;">
+      <h4 style="margin: 0; color: #e0e0e0; font-size: 15px;">Quantity Trend over Time</h4>
+      <div class="graph-toggle" style="margin-left: auto; margin-bottom: 0;">
+        <button id="home_grain_daily" class="toggle-btn active" onclick="changeHomeTimelineGranularity('DAILY')">Daily</button>
+        <button id="home_grain_monthly" class="toggle-btn" onclick="changeHomeTimelineGranularity('MONTHLY')">Monthly</button>
+        <button id="home_grain_yearly" class="toggle-btn" onclick="changeHomeTimelineGranularity('YEARLY')">Yearly</button>
+      </div>
+    </div>
+    <div id="home_timeline_chart_div" class="chart-container-div" style="margin-top: 10px;"></div>
+  </div>
+
+  <div id="raw_data_tab" class="tab-content">
     <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
       <div id="transaction_controls" style="display: flex; align-items: center; gap: 8px;">
         <button id="global_edit_btn" class="action-btn-secondary" onclick="toggleTransactionEditMode()" style="padding: 8px; display: flex; align-items: center; justify-content: center; height: 36px; width: 36px;" title="Toggle Edit Mode">
@@ -167,36 +180,29 @@
     </div>
   </div>
 
-  <div id="member_view_tab" class="tab-content">
+  <div id="analytics_tab" class="tab-content">
     <div class="view-header-actions">
-      <div id="member_graph_toggle_wrapper" class="graph-toggle">
-        <button id="member_mode_graph" class="toggle-btn active" onclick="togglePivotMode('MEMBER', 'GRAPH')">Bar Graph</button>
-        <button id="member_mode_table" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'TABLE')">Table</button>
-        <button id="member_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'HEATMAP')">Heatmap</button>
-        <button id="member_mode_timeline" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'TIMELINE')">Timeline</button>
+      <!-- Left side: Dimension switches -->
+      <div class="graph-toggle">
+        <button id="analytics_dim_member" class="toggle-btn active" onclick="changeAnalyticsDimension('MEMBER')">Member View</button>
+        <button id="analytics_dim_group" class="toggle-btn" onclick="changeAnalyticsDimension('GROUP')">Group View</button>
+        <button id="analytics_dim_color" class="toggle-btn" onclick="changeAnalyticsDimension('COLOR')">Color View</button>
       </div>
-
+      <!-- Right side: Mode switches -->
+      <div class="graph-toggle" style="margin-left: auto;">
+        <button id="analytics_mode_graph" class="toggle-btn active" onclick="changeAnalyticsMode('GRAPH')">Bar Graph</button>
+        <button id="analytics_mode_table" class="toggle-btn" onclick="changeAnalyticsMode('TABLE')">Table</button>
+      </div>
     </div>
     
     <div id="member_metadata_placeholder"></div>
+    <div id="group_metadata_placeholder"></div>
     
-    <div id="member_content_wrapper">
+    <div id="analytics_content_wrapper" style="margin-top: 15px;">
+      <!-- Member Wrappers -->
       <div id="member_table_wrapper" class="table-wrapper" style="display:none;">
         <div id="member_table_container"></div>
       </div>
-      
-      <div id="member_heatmap_wrapper" style="display:none;">
-        <div class="graph-toggle" style="margin-bottom:10px;">
-          <button id="member_hm_qty" class="toggle-btn active" onclick="changePivotMetric('MEMBER', 'qty')">Size by Qty</button>
-          <button id="member_hm_price" class="toggle-btn" onclick="changePivotMetric('MEMBER', 'price')">Size by Price</button>
-          <span style="border-left: 1px solid #444; margin: 0 8px; height: 16px;"></span>
-          <button id="member_hm_top10" class="toggle-btn" onclick="changeHeatmapTopN('MEMBER', 10)">Top 10</button>
-          <button id="member_hm_top20" class="toggle-btn active" onclick="changeHeatmapTopN('MEMBER', 20)">Top 20</button>
-          <button id="member_hm_top50" class="toggle-btn" onclick="changeHeatmapTopN('MEMBER', 50)">Top 50</button>
-        </div>
-        <div id="member_heatmap_container" class="heatmap-container"></div>
-      </div>
-      
       <div id="member_graph_wrapper">
         <div class="graph-toggle" style="margin-bottom:10px;">
           <button id="member_gr_qty" class="toggle-btn active" onclick="changePivotMetric('MEMBER', 'qty')">Quantity</button>
@@ -205,43 +211,11 @@
         <div id="member_chart_div" class="chart-container-div"></div>
       </div>
 
-      <div id="member_timeline_wrapper" style="display:none;">
-        <div id="member_timeline_chart_div" class="chart-container-div"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="group_view_tab" class="tab-content">
-    <div class="view-header-actions">
-      <div id="group_graph_toggle_wrapper" class="graph-toggle">
-        <button id="group_mode_graph" class="toggle-btn active" onclick="togglePivotMode('GROUP', 'GRAPH')">Bar Graph</button>
-        <button id="group_mode_table" class="toggle-btn" onclick="togglePivotMode('GROUP', 'TABLE')">Table</button>
-        <button id="group_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('GROUP', 'HEATMAP')">Heatmap</button>
-        <button id="group_mode_timeline" class="toggle-btn" onclick="togglePivotMode('GROUP', 'TIMELINE')">Timeline</button>
-      </div>
-
-    </div>
-    
-    <div id="group_metadata_placeholder"></div>
-    
-    <div id="group_content_wrapper">
+      <!-- Group Wrappers -->
       <div id="group_table_wrapper" class="table-wrapper" style="display:none;">
         <div id="group_table_container"></div>
       </div>
-      
-      <div id="group_heatmap_wrapper" style="display:none;">
-        <div class="graph-toggle" style="margin-bottom:10px;">
-          <button id="group_hm_qty" class="toggle-btn active" onclick="changePivotMetric('GROUP', 'qty')">Size by Qty</button>
-          <button id="group_hm_price" class="toggle-btn" onclick="changePivotMetric('GROUP', 'price')">Size by Price</button>
-          <span style="border-left: 1px solid #444; margin: 0 8px; height: 16px;"></span>
-          <button id="group_hm_top10" class="toggle-btn" onclick="changeHeatmapTopN('GROUP', 10)">Top 10</button>
-          <button id="group_hm_top20" class="toggle-btn active" onclick="changeHeatmapTopN('GROUP', 20)">Top 20</button>
-          <button id="group_hm_top50" class="toggle-btn" onclick="changeHeatmapTopN('GROUP', 50)">Top 50</button>
-        </div>
-        <div id="group_heatmap_container" class="heatmap-container"></div>
-      </div>
-      
-      <div id="group_graph_wrapper">
+      <div id="group_graph_wrapper" style="display:none;">
         <div class="graph-toggle" style="margin-bottom:10px;">
           <button id="group_gr_qty" class="toggle-btn active" onclick="changePivotMetric('GROUP', 'qty')">Quantity</button>
           <button id="group_gr_price" class="toggle-btn" onclick="changePivotMetric('GROUP', 'price')">Total Price (THB)</button>
@@ -249,48 +223,17 @@
         <div id="group_chart_div" class="chart-container-div"></div>
       </div>
 
-      <div id="group_timeline_wrapper" style="display:none;">
-        <div id="group_timeline_chart_div" class="chart-container-div"></div>
+      <!-- Color Wrappers -->
+      <div id="color_table_wrapper" class="table-wrapper" style="display:none;">
+        <div id="color_table_container"></div>
       </div>
-    </div>
-  </div>
-
-  <div id="color_view_tab" class="tab-content">
-    <div class="view-header-actions">
-      <div class="graph-toggle">
-        <button id="color_mode_graph" class="toggle-btn active" onclick="togglePivotMode('COLOR', 'GRAPH')">Bar Graph</button>
-        <button id="color_mode_table" class="toggle-btn" onclick="togglePivotMode('COLOR', 'TABLE')">Table</button>
-        <button id="color_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('COLOR', 'HEATMAP')">Heatmap</button>
-        <button id="color_mode_timeline" class="toggle-btn" onclick="togglePivotMode('COLOR', 'TIMELINE')">Timeline</button>
+      <div id="color_graph_wrapper" style="display:none;">
+        <div class="graph-toggle" style="margin-bottom:10px;">
+          <button id="color_gr_qty" class="toggle-btn active" onclick="changePivotMetric('COLOR', 'qty')">Quantity</button>
+          <button id="color_gr_price" class="toggle-btn" onclick="changePivotMetric('COLOR', 'price')">Total Price (THB)</button>
+        </div>
+        <div id="color_chart_div" class="chart-container-div"></div>
       </div>
-    </div>
-    
-    <div id="color_table_wrapper" class="table-wrapper" style="display:none;">
-      <div id="color_table_container"></div>
-    </div>
-    
-    <div id="color_heatmap_wrapper" style="display:none;">
-      <div class="graph-toggle" style="margin-bottom:10px;">
-        <button id="color_hm_qty" class="toggle-btn active" onclick="changePivotMetric('COLOR', 'qty')">Size by Qty</button>
-        <button id="color_hm_price" class="toggle-btn" onclick="changePivotMetric('COLOR', 'price')">Size by Price</button>
-        <span style="border-left: 1px solid #444; margin: 0 8px; height: 16px;"></span>
-        <button id="color_hm_top10" class="toggle-btn" onclick="changeHeatmapTopN('COLOR', 10)">Top 10</button>
-        <button id="color_hm_top20" class="toggle-btn active" onclick="changeHeatmapTopN('COLOR', 20)">Top 20</button>
-        <button id="color_hm_top50" class="toggle-btn" onclick="changeHeatmapTopN('COLOR', 50)">Top 50</button>
-      </div>
-      <div id="color_heatmap_container" class="heatmap-container"></div>
-    </div>
-    
-    <div id="color_graph_wrapper">
-      <div class="graph-toggle" style="margin-bottom:10px;">
-        <button id="color_gr_qty" class="toggle-btn active" onclick="changePivotMetric('COLOR', 'qty')">Quantity</button>
-        <button id="color_gr_price" class="toggle-btn" onclick="changePivotMetric('COLOR', 'price')">Total Price (THB)</button>
-      </div>
-      <div id="color_chart_div" class="chart-container-div"></div>
-    </div>
-
-    <div id="color_timeline_wrapper" style="display:none;">
-      <div id="color_timeline_chart_div" class="chart-container-div"></div>
     </div>
   </div>
 
@@ -303,64 +246,7 @@
   </div>
 
 
-  <div id="shared_timeline_controls_wrapper" style="display: none;">
-    <div class="view-header-actions" style="margin-top: 15px;">
-      <div class="graph-toggle" style="margin-bottom:0;">
-        <button id="timeline_daily" class="toggle-btn active" onclick="changeTimelineGranularity('DAILY')">Daily</button>
-        <button id="timeline_monthly" class="toggle-btn" onclick="changeTimelineGranularity('MONTHLY')">Monthly</button>
-        <button id="timeline_yearly" class="toggle-btn" onclick="changeTimelineGranularity('YEARLY')">Yearly</button>
-      </div>
-      <div class="graph-toggle" style="margin-bottom:0;">
-        <span style="font-size:11px; font-weight:bold; color:#aaaaaa; text-transform:uppercase; margin-left:5px; margin-right:5px;">Mode:</span>
-        <button id="timeline_mode_discrete" class="toggle-btn" onclick="changeTimelineCalculationMode('DISCRETE')">Interval</button>
-        <button id="timeline_mode_cumulative" class="toggle-btn active" onclick="changeTimelineCalculationMode('CUMULATIVE')">Cumulative Sum</button>
-      </div>
-      
-      <div class="graph-toggle" style="margin-bottom:0;">
-        <span style="font-size:11px; font-weight:bold; color:#aaaaaa; text-transform:uppercase; margin-left:5px; margin-right:5px;">Breakdown:</span>
-        <button id="timeline_breakdown_none" class="toggle-btn" onclick="changeTimelineBreakdown('NONE')">Global Total</button>
-        <button id="timeline_breakdown_context" class="toggle-btn active" onclick="changeTimelineBreakdown('CONTEXT')">By Context</button>
-      </div>
-    </div>
 
-    <div class="multiselect-panel">
-      <div class="multiselect-box" id="subfilter_box_member" style="display:none;">
-        <div class="multiselect-header-container">
-          <h4>Timeline Members Filter</h4>
-          <div class="sub-filter-utilities">
-            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_member_checkboxes', true)">Select All</button>
-            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_member_checkboxes', false)">Clear All</button>
-          </div>
-        </div>
-        <input type="text" id="timeline_member_search" class="subfilter-search-input" placeholder="Search member name..." oninput="filterCheckboxesByText('timeline_member_search', 'timeline_member_checkboxes')">
-        <div id="timeline_member_checkboxes" class="checkbox-container"></div>
-      </div>
-      
-      <div class="multiselect-box" id="subfilter_box_group" style="display:none;">
-        <div class="multiselect-header-container">
-          <h4>Timeline Groups Filter</h4>
-          <div class="sub-filter-utilities">
-            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_group_checkboxes', true)">Select All</button>
-            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_group_checkboxes', false)">Clear All</button>
-          </div>
-        </div>
-        <input type="text" id="timeline_group_search" class="subfilter-search-input" placeholder="Search group name..." oninput="filterCheckboxesByText('timeline_group_search', 'timeline_group_checkboxes')">
-        <div id="timeline_group_checkboxes" class="checkbox-container"></div>
-      </div>
-
-      <div class="multiselect-box" id="subfilter_box_color" style="display:none;">
-        <div class="multiselect-header-container">
-          <h4>Timeline Colors Filter</h4>
-          <div class="sub-filter-utilities">
-            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_color_checkboxes', true)">Select All</button>
-            <button class="sub-util-btn" onclick="toggleSubCheckboxes('timeline_color_checkboxes', false)">Clear All</button>
-          </div>
-        </div>
-        <input type="text" id="timeline_color_search" class="subfilter-search-input" placeholder="Search color..." oninput="filterCheckboxesByText('timeline_color_search', 'timeline_color_checkboxes')">
-        <div id="timeline_color_checkboxes" class="checkbox-container"></div>
-      </div>
-    </div>
-  </div>
 
   <!-- Add/Edit Transaction Modal -->
   <div id="transaction_modal" class="modal-overlay" style="display: none;">

@@ -56,6 +56,13 @@
   let METRIC_SELECTIONS = { MEMBER: 'qty', GROUP: 'qty', COLOR: 'qty' };
   let HEATMAP_TOP_N = { MEMBER: 20, GROUP: 20, COLOR: 20 };
 
+  // Combined Analytics tab state variables
+  let ANALYTICS_DIMENSION = 'MEMBER';
+  let ANALYTICS_MODE = 'GRAPH';
+
+  // Home timeline granularity state variable
+  let HOME_TIMELINE_GRANULARITY = 'DAILY';
+
   let TOTAL_QTY_GLOBAL = 0;
   let TOTAL_PRICE_GLOBAL = 0;
 
@@ -106,7 +113,15 @@
 
       applyFilters(); 
     } catch (e) {
-      document.getElementById('raw_table_container').innerHTML = "Variables Processing Error: Framework data structural arrays empty.";
+      console.error("InitializeDashboardEngine calculation error: ", e);
+      let spinner = document.getElementById('loading_spinner');
+      if (spinner) {
+        spinner.innerHTML = `<div style="color: #ff8a80; padding: 25px; text-align: center; font-family: Inter, sans-serif; background: #1e1e1e; border: 1px solid #ff6b6b; border-radius: 8px; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin: auto;">
+          <h3 style="margin: 0 0 10px 0;">Dashboard Engine Failed</h3>
+          <p style="font-size: 13px; opacity: 0.8; margin-bottom: 15px;">An error occurred during initialization:</p>
+          <pre style="background: #2d2d2d; color: #ff8a80; padding: 12px; border-radius: 4px; text-align: left; overflow: auto; font-size: 11px; max-height: 250px; border: 1px solid #444;">${e.stack || e.message || e}</pre>
+        </div>`;
+      }
     }
   }
 
@@ -145,7 +160,6 @@
     updateDropdownElement('filter_nationality', Array.from(nationalities).sort(), selectedNat, "-- All Nationalities --");
     updateDropdownElement('filter_company', Array.from(companies).sort(), selectedCmp, "-- All Companies --");
 
-    buildTimelineFilterCheckboxes();
   }
 
   function updateDropdownElement(id, items, selectedValue, defaultText) {
@@ -162,75 +176,7 @@
     select.appendChild(frag);
   }
 
-  function buildTimelineFilterCheckboxes() {
-    const memBox = document.getElementById('timeline_member_checkboxes');
-    const grpBox = document.getElementById('timeline_group_checkboxes');
-    const colBox = document.getElementById('timeline_color_checkboxes');
-    if (!memBox || !grpBox || !colBox) return;
-    
-    const currentSelectedMembers = getSelectedTimelineCheckboxes('timeline_member_checkboxes');
-    const currentSelectedGroups = getSelectedTimelineCheckboxes('timeline_group_checkboxes');
-    const currentSelectedColors = getSelectedTimelineCheckboxes('timeline_color_checkboxes');
-    const isFirstRun = (currentSelectedMembers.size === 0 && currentSelectedGroups.size === 0 && currentSelectedColors.size === 0);
 
-    const activeMembers = new Set();
-    const activeGroups = new Set();
-    const activeColors = new Set();
-
-    FILTERED_DATA.forEach(row => {
-      if (row['Member']) activeMembers.add(row['Member']);
-      if (row['Group']) activeGroups.add(row['Group']);
-      if (row['Color']) activeColors.add(row['Color']);
-    });
-
-    const sortedMembers = Array.from(activeMembers).sort();
-    const sortedGroups = Array.from(activeGroups).sort();
-    const sortedColors = Array.from(activeColors).sort();
-    
-    memBox.innerHTML = sortedMembers.map(m => {
-      let isChecked = isFirstRun || currentSelectedMembers.has(m) ? 'checked' : '';
-      return '<label class="checkbox-item"><input type="checkbox" value="' + m + '" ' + isChecked + ' onchange="drawTimelineChart()"> ' + m + '</label>';
-    }).join('') || '<span style="font-size:12px; color:#666; padding:6px;">No members available</span>';
-
-    grpBox.innerHTML = sortedGroups.map(g => {
-      let isChecked = isFirstRun || currentSelectedGroups.has(g) ? 'checked' : '';
-      return '<label class="checkbox-item"><input type="checkbox" value="' + g + '" ' + isChecked + ' onchange="drawTimelineChart()"> ' + g + '</label>';
-    }).join('') || '<span style="font-size:12px; color:#666; padding:6px;">No groups available</span>';
-
-    colBox.innerHTML = sortedColors.map(c => {
-      let isChecked = isFirstRun || currentSelectedColors.has(c) ? 'checked' : '';
-      return '<label class="checkbox-item"><input type="checkbox" value="' + c + '" ' + isChecked + ' onchange="drawTimelineChart()"> ' + c + '</label>';
-    }).join('') || '<span style="font-size:12px; color:#666; padding:6px;">No colors available</span>';
-
-    filterCheckboxesByText('timeline_member_search', 'timeline_member_checkboxes');
-    filterCheckboxesByText('timeline_group_search', 'timeline_group_checkboxes');
-    filterCheckboxesByText('timeline_color_search', 'timeline_color_checkboxes');
-  }
-
-  function filterCheckboxesByText(searchBoxId, checkboxContainerId) {
-    const searchBox = document.getElementById(searchBoxId);
-    const container = document.getElementById(checkboxContainerId);
-    if (!searchBox || !container) return;
-    const query = searchBox.value.toLowerCase().trim();
-    const labels = container.getElementsByClassName('checkbox-item');
-    for (let i = 0; i < labels.length; i++) {
-      let textContent = labels[i].textContent || labels[i].innerText;
-      labels[i].style.display = textContent.toLowerCase().includes(query) ? 'flex' : 'none';
-    }
-  }
-
-  function toggleSubCheckboxes(containerId, checkAllState) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const labels = container.getElementsByClassName('checkbox-item');
-    for (let i = 0; i < labels.length; i++) {
-      if (labels[i].style.display !== 'none') {
-        const input = labels[i].getElementsByTagName('input')[0];
-        if (input) input.checked = checkAllState;
-      }
-    }
-    drawTimelineChart();
-  }
 
   function applyFilters() {
     clearTimeout(filterDebounceTimeout);
@@ -240,40 +186,52 @@
   }
 
   function runFilterPipelineCalculation() {
-    resetSelection();
-    const yr = document.getElementById('filter_year').value;
-    const mem = document.getElementById('filter_member').value;
-    const grp = document.getElementById('filter_group').value;
-    const colFilter = document.getElementById('filter_color').value;
-    const nat = document.getElementById('filter_nationality').value;
-    const cmp = document.getElementById('filter_company').value;
+    try {
+      resetSelection();
+      const yr = document.getElementById('filter_year').value;
+      const mem = document.getElementById('filter_member').value;
+      const grp = document.getElementById('filter_group').value;
+      const colFilter = document.getElementById('filter_color').value;
+      const nat = document.getElementById('filter_nationality').value;
+      const cmp = document.getElementById('filter_company').value;
 
-    const hasCellFilters = Object.keys(ACTIVE_CELL_FILTERS).length > 0;
+      const hasCellFilters = Object.keys(ACTIVE_CELL_FILTERS).length > 0;
 
-    FILTERED_DATA = ALL_DATA.filter(row => {
-      if (yr && String(row['Year']) !== String(yr)) return false;
-      if (mem && row['Member'] !== mem) return false;
-      if (grp && row['Group'] !== grp) return false;
-      if (colFilter && row['Color'] !== colFilter) return false;
-      if (nat && row['Nationality'] !== nat) return false;
-      if (cmp && row['Company'] !== cmp) return false;
-      if (hasCellFilters) {
-        for (let colKey in ACTIVE_CELL_FILTERS) {
-          if (String(row[colKey]) !== String(ACTIVE_CELL_FILTERS[colKey])) return false;
+      FILTERED_DATA = ALL_DATA.filter(row => {
+        if (yr && String(row['Year']) !== String(yr)) return false;
+        if (mem && row['Member'] !== mem) return false;
+        if (grp && row['Group'] !== grp) return false;
+        if (colFilter && row['Color'] !== colFilter) return false;
+        if (nat && row['Nationality'] !== nat) return false;
+        if (cmp && row['Company'] !== cmp) return false;
+        if (hasCellFilters) {
+          for (let colKey in ACTIVE_CELL_FILTERS) {
+            if (String(row[colKey]) !== String(ACTIVE_CELL_FILTERS[colKey])) return false;
+          }
         }
-      }
-      return true;
-    });
+        return true;
+      });
 
-    populateFilterOptionsCascaded(false);
-    renderTokenBreadcrumbs();
-    calculateGlobalKPIs();
-    buildPivotDatasets();
-    
-    sortRawDataStructure();
-    sortEventsDataStructure();
-    renderAllViews();
-    hideLoading();
+      populateFilterOptionsCascaded(false);
+      renderTokenBreadcrumbs();
+      calculateGlobalKPIs();
+      buildPivotDatasets();
+      
+      sortRawDataStructure();
+      sortEventsDataStructure();
+      renderAllViews();
+      hideLoading();
+    } catch (e) {
+      console.error("Initialization pipeline error: ", e);
+      let spinner = document.getElementById('loading_spinner');
+      if (spinner) {
+        spinner.innerHTML = `<div style="color: #ff8a80; padding: 25px; text-align: center; font-family: Inter, sans-serif; background: #1e1e1e; border: 1px solid #ff6b6b; border-radius: 8px; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin: auto;">
+          <h3 style="margin: 0 0 10px 0;">Dashboard Load Failed</h3>
+          <p style="font-size: 13px; opacity: 0.8; margin-bottom: 15px;">An error occurred during calculation:</p>
+          <pre style="background: #2d2d2d; color: #ff8a80; padding: 12px; border-radius: 4px; text-align: left; overflow: auto; font-size: 11px; max-height: 250px; border: 1px solid #444;">${e.stack || e.message || e}</pre>
+        </div>`;
+      }
+    }
   }
 
   function filterByCell(columnName, value) {
@@ -337,7 +295,7 @@
 
   function calculateGlobalKPIs() {
     TOTAL_QTY_GLOBAL = 0; TOTAL_PRICE_GLOBAL = 0;
-    let memberMap = {}, groupMap = {}, typeMap = {}, locationMap = {};
+    let memberMap = {}, groupMap = {}, colorMap = {}, companyMap = {};
 
     for (let i = 0; i < FILTERED_DATA.length; i++) {
       let row = FILTERED_DATA[i];
@@ -345,14 +303,14 @@
       let p = Number(row['Total Price (THB)']) || 0;
       let m = row['Member'] || 'Unknown';
       let g = row['Group'] || 'Unknown';
-      let t = row['Type'] || 'Unknown';
-      let l = row['Location'] || 'Unknown';
+      let c = row['Color'] || 'Unknown';
+      let comp = row['Company'] || 'Unknown';
 
       TOTAL_QTY_GLOBAL += q; TOTAL_PRICE_GLOBAL += p;
       if (row['Member']) memberMap[m] = (memberMap[m] || 0) + q;
       if (row['Group']) groupMap[g] = (groupMap[g] || 0) + q;
-      if (row['Type']) typeMap[t] = (typeMap[t] || 0) + q;
-      if (row['Location']) locationMap[l] = (locationMap[l] || 0) + q;
+      if (row['Color']) colorMap[c] = (colorMap[c] || 0) + q;
+      if (row['Company']) companyMap[comp] = (companyMap[comp] || 0) + q;
     }
 
     document.getElementById('kpi_total_qty').innerText = TOTAL_QTY_GLOBAL.toLocaleString();
@@ -361,73 +319,52 @@
     document.getElementById('kpi_unique_groups').innerText = Object.keys(groupMap).filter(k => k !== 'Unknown').length.toLocaleString();
     document.getElementById('kpi_top_members').innerHTML = createTop3ListHTML(memberMap, TOTAL_QTY_GLOBAL, true);
     document.getElementById('kpi_top_groups').innerHTML = createTop3ListHTML(groupMap, TOTAL_QTY_GLOBAL, false);
-    document.getElementById('kpi_top_types').innerHTML = createTop3ListHTML(typeMap, TOTAL_QTY_GLOBAL, false);
-    document.getElementById('kpi_top_locations').innerHTML = createTop3ListHTML(locationMap, TOTAL_QTY_GLOBAL, false);
+    
+    let colorsKPI = document.getElementById('kpi_top_colors');
+    if (colorsKPI) colorsKPI.innerHTML = createTop3ListHTML(colorMap, TOTAL_QTY_GLOBAL, false);
+
+    let companiesKPI = document.getElementById('kpi_top_companies');
+    if (companiesKPI) companiesKPI.innerHTML = createTop3ListHTML(companyMap, TOTAL_QTY_GLOBAL, false);
   }
 
   function renderAllViews() {
-    renderRawTable();
-    renderEventsPivotTable();
-    renderMetadataTables();
-
-    ['MEMBER', 'GROUP', 'COLOR'].forEach(vk => {
-      let lower = vk.toLowerCase();
-      let mode = PIVOT_MODES[vk];
-      
-      document.getElementById(lower + '_table_wrapper').style.display = (mode === 'TABLE') ? 'block' : 'none';
-      document.getElementById(lower + '_heatmap_wrapper').style.display = (mode === 'HEATMAP') ? 'block' : 'none';
-      document.getElementById(lower + '_graph_wrapper').style.display = (mode === 'GRAPH') ? 'block' : 'none';
-      document.getElementById(lower + '_timeline_wrapper').style.display = (mode === 'TIMELINE') ? 'block' : 'none';
-      
-      if (mode === 'TABLE') {
-        if (vk === 'MEMBER') renderMemberPivotHTML();
-        else if (vk === 'GROUP') renderGroupPivotHTML();
-        else renderColorPivotHTML();
-      } else if (mode === 'HEATMAP') {
-        drawHeatmapWidget(vk);
-      } else if (mode === 'GRAPH') {
-        drawDimensionBarGraph(vk);
-      } else if (mode === 'TIMELINE') {
-        drawTimelineChart();
-      }
-    });
-    handleTimelineControlsVisibility();
+    let activeTab = document.querySelector('.tab-content.active');
+    if (!activeTab) return;
+    
+    if (activeTab.id === 'home_view_tab') {
+      drawHomeTimelineChart();
+    } else if (activeTab.id === 'raw_data_tab') {
+      renderRawTable();
+      renderMetadataTables();
+    } else if (activeTab.id === 'analytics_tab') {
+      renderAnalyticsView();
+    } else if (activeTab.id === 'events_view_tab') {
+      renderEventsPivotTable();
+    }
   }
 
-  function handleTimelineControlsVisibility() {
-    let sharedControls = document.getElementById('shared_timeline_controls_wrapper');
-    let activeTab = document.querySelector('.tab-content.active');
-    let isTimelineActive = false;
-    let labelBtn = document.getElementById('timeline_breakdown_context');
-    
-    if (activeTab) {
-      if (activeTab.id === 'member_view_tab' && PIVOT_MODES.MEMBER === 'TIMELINE') {
-        isTimelineActive = true;
-        if(labelBtn) labelBtn.innerText = "By Member";
-        document.getElementById('subfilter_box_member').style.display = 'flex';
-        document.getElementById('subfilter_box_group').style.display = 'none';
-        document.getElementById('subfilter_box_color').style.display = 'none';
-      } else if (activeTab.id === 'group_view_tab' && PIVOT_MODES.GROUP === 'TIMELINE') {
-        isTimelineActive = true;
-        if(labelBtn) labelBtn.innerText = "By Group";
-        document.getElementById('subfilter_box_member').style.display = 'none';
-        document.getElementById('subfilter_box_group').style.display = 'flex';
-        document.getElementById('subfilter_box_color').style.display = 'none';
-      } else if (activeTab.id === 'color_view_tab' && PIVOT_MODES.COLOR === 'TIMELINE') {
-        isTimelineActive = true;
-        if(labelBtn) labelBtn.innerText = "By Color";
-        document.getElementById('subfilter_box_member').style.display = 'none';
-        document.getElementById('subfilter_box_group').style.display = 'none';
-        document.getElementById('subfilter_box_color').style.display = 'flex';
+  function renderAnalyticsView() {
+    ['MEMBER', 'GROUP', 'COLOR'].forEach(vk => {
+      let lower = vk.toLowerCase();
+      let tableWrap = document.getElementById(lower + '_table_wrapper');
+      let graphWrap = document.getElementById(lower + '_graph_wrapper');
+      
+      if (vk === ANALYTICS_DIMENSION) {
+        if (tableWrap) tableWrap.style.display = (ANALYTICS_MODE === 'TABLE') ? 'block' : 'none';
+        if (graphWrap) graphWrap.style.display = (ANALYTICS_MODE === 'GRAPH') ? 'block' : 'none';
+        
+        if (ANALYTICS_MODE === 'TABLE') {
+          if (vk === 'MEMBER') renderMemberPivotHTML();
+          else if (vk === 'GROUP') renderGroupPivotHTML();
+          else renderColorPivotHTML();
+        } else {
+          drawDimensionBarGraph(vk);
+        }
+      } else {
+        if (tableWrap) tableWrap.style.display = 'none';
+        if (graphWrap) graphWrap.style.display = 'none';
       }
-    }
-    
-    if (isTimelineActive && activeTab) {
-      sharedControls.style.display = 'block';
-      activeTab.appendChild(sharedControls);
-    } else {
-      sharedControls.style.display = 'none';
-    }
+    });
   }
 
   function handleRawSort(columnName) {
@@ -696,41 +633,14 @@
     container.innerHTML = buf.join('');
   }
 
-  function togglePivotMode(viewKey, targetMode) {
-    PIVOT_MODES[viewKey] = targetMode;
-    let lower = viewKey.toLowerCase();
-    
-    document.getElementById(lower + '_mode_table').classList.toggle('active', targetMode === 'TABLE');
-    document.getElementById(lower + '_mode_heatmap').classList.toggle('active', targetMode === 'HEATMAP');
-    document.getElementById(lower + '_mode_graph').classList.toggle('active', targetMode === 'GRAPH');
-    document.getElementById(lower + '_mode_timeline').classList.toggle('active', targetMode === 'TIMELINE');
-    
-    renderAllViews();
-  }
-
   function changePivotMetric(viewKey, metric) {
     METRIC_SELECTIONS[viewKey] = metric;
     let lower = viewKey.toLowerCase();
-    if(document.getElementById(lower + '_hm_qty')) {
-      document.getElementById(lower + '_hm_qty').classList.toggle('active', metric === 'qty');
-      document.getElementById(lower + '_hm_price').classList.toggle('active', metric === 'price');
-    }
     if(document.getElementById(lower + '_gr_qty')) {
       document.getElementById(lower + '_gr_qty').classList.toggle('active', metric === 'qty');
       document.getElementById(lower + '_gr_price').classList.toggle('active', metric === 'price');
     }
-    if (PIVOT_MODES[viewKey] === 'HEATMAP') drawHeatmapWidget(viewKey);
-    else if (PIVOT_MODES[viewKey] === 'GRAPH') drawDimensionBarGraph(viewKey);
-  }
-
-  function changeHeatmapTopN(viewKey, nValue) {
-    HEATMAP_TOP_N[viewKey] = nValue;
-    let lower = viewKey.toLowerCase();
-    [10, 20, 50].forEach(val => {
-      let el = document.getElementById(lower + '_hm_top' + val);
-      if (el) el.classList.toggle('active', val === nValue);
-    });
-    drawHeatmapWidget(viewKey);
+    drawDimensionBarGraph(viewKey);
   }
 
   function drawDimensionBarGraph(viewKey) {
@@ -884,275 +794,94 @@
     }, 50);
   }
 
-  function drawHeatmapWidget(viewKey) {
-    let containerId = viewKey.toLowerCase() + '_heatmap_container';
-    let element = document.getElementById(containerId);
-    if (!element) return;
 
-    let metricKey = METRIC_SELECTIONS[viewKey];
-    let dataList = viewKey === 'MEMBER' ? [...MEMBER_P_ARRAY] : (viewKey === 'GROUP' ? [...GROUP_P_ARRAY] : [...COLOR_P_ARRAY]);
-    let dimField = viewKey === 'MEMBER' ? 'Member' : (viewKey === 'GROUP' ? 'Group' : 'Color');
 
-    dataList.sort((a, b) => b[metricKey] - a[metricKey]);
-    
-    let limitBound = HEATMAP_TOP_N[viewKey] || 20;
-    let topSelection = dataList.slice(0, limitBound);
-
-    if (topSelection.length === 0) { element.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No operational metrics matching thresholds.</div>"; return; }
-
-    let chartData = [[dimField + ' Element', 'Parent Core', 'Size Metric', 'Color Rule Identifier']];
-    let parentNodeName = viewKey + 's Core';
-    chartData.push([parentNodeName, null, 0, 0]);
-    topSelection.forEach((r, idx) => { chartData.push([r[dimField], parentNodeName, r[metricKey], idx + 1]); });
-
-    let dataTable = google.visualization.arrayToDataTable(chartData);
-    let treeMapChart = new google.visualization.TreeMap(element);
-
-    let rankOneValue = topSelection[0][metricKey] || 1;
-    let globalBaseTotal = metricKey === 'qty' ? TOTAL_QTY_GLOBAL : TOTAL_PRICE_GLOBAL;
-
-    let options = {
-      minColor: '#1a365d', midColor: '#2b6cb0', maxColor: '#3182ce',
-      headerHeight: 0, fontColor: 'transparent', fontSize: 1,
-      showScale: false, useWeightedAverageForColor: false, maxPostDepth: 0, hintOpacity: 0
-    };
-
-    google.visualization.events.addListener(treeMapChart, 'ready', function() {
-      let rects = element.getElementsByTagName('rect');
-      let textElements = element.getElementsByTagName('text');
-      for (let t = 0; t < textElements.length; t++) textElements[t].style.display = 'none';
-
-      topSelection.forEach((item, idx) => {
-        let rankNum = idx + 1;
-        let rawLabel = item[dimField];
-        let matchedHex = '#3182ce';
-        
-        if (viewKey === 'MEMBER' || viewKey === 'COLOR') {
-          matchedHex = (COLOR_MAP[viewKey === 'MEMBER' ? item.Color : item[dimField]] || {primary: '#3182ce'}).primary;
-        } else {
-          let maxVal = Math.max(...topSelection.map(i => i[metricKey])) || 1;
-          let minVal = Math.min(...topSelection.map(i => i[metricKey])) || 0;
-          let ratio = 1 - (maxVal === minVal ? 1 : (item[metricKey] - minVal) / (maxVal - minVal));
-          matchedHex = 'rgb(' + Math.round(26 + 112 * ratio) + ',' + Math.round(54 + 126 * ratio) + ',' + Math.round(93 + 155 * ratio) + ')';
-        }
-
-        let currentVal = item[metricKey];
-        let relativeRatioToRankOne = currentVal / rankOneValue; 
-        let pctOfGlobalTotal = globalBaseTotal > 0 ? ((currentVal / globalBaseTotal) * 100).toFixed(1) : '0.0';
-        let formattedValue = metricKey === 'qty' ? currentVal.toLocaleString() : '฿' + currentVal.toLocaleString(undefined, {maximumFractionDigits:0});
-
-        let nameFontSize = Math.max(9, Math.round(16 * relativeRatioToRankOne));
-        let dataFontSize = Math.max(8, Math.round(12 * relativeRatioToRankOne));
-        let lineSpacing = Math.max(10, Math.round(14 * relativeRatioToRankOne));
-
-        let showMetricsRow = (nameFontSize >= 11) || (rankNum <= 10);
-        if (rankNum <= 10 && nameFontSize < 11) {
-          nameFontSize = 11;
-          dataFontSize = 9;
-          lineSpacing = 11;
-        }
-
-        for (let j = 0; j < rects.length; j++) {
-          let width = parseFloat(rects[j].getAttribute('width'));
-          let height = parseFloat(rects[j].getAttribute('height'));
-          let x = parseFloat(rects[j].getAttribute('x'));
-          let y = parseFloat(rects[j].getAttribute('y'));
-
-          if (width > 0 && height > 0 && x >= 0 && y >= 0 && width < element.offsetWidth) {
-            if (!rects[j].hasAttribute('data-custom-rendered')) {
-              rects[j].setAttribute('fill', matchedHex);
-              rects[j].setAttribute('data-custom-rendered', 'true');
-              rects[j].setAttribute('stroke', '#363636');      
-              rects[j].setAttribute('stroke-width', '1.2');     
-
-              let fontColor = '#ffffff';
-              let checkColor = viewKey === 'MEMBER' ? item.Color : item[dimField];
-              if ((viewKey === 'MEMBER' || viewKey === 'COLOR') && (checkColor === 'White' || checkColor === 'Yellow')) fontColor = '#121212';
-
-              let svgNS = "http://www.w3.org/2000/svg";
-              let textGroup = document.createElementNS(svgNS, "text");
-              textGroup.setAttribute("x", (x + width / 2));
-              textGroup.setAttribute("y", (y + height / 2 - (showMetricsRow ? 2 : -4)));
-              textGroup.setAttribute("text-anchor", "middle");
-              textGroup.setAttribute("fill", fontColor);
-              textGroup.setAttribute("style", "font-family: sans-serif; font-weight: bold; pointer-events: none;");
-
-              let tspanLine1 = document.createElementNS(svgNS, "tspan");
-              tspanLine1.textContent = "#" + rankNum + " " + rawLabel;
-              tspanLine1.setAttribute("x", (x + width / 2));
-              tspanLine1.setAttribute("style", "font-size: " + nameFontSize + "px;");
-              textGroup.appendChild(tspanLine1);
-
-              if (showMetricsRow) {
-                let tspanData = document.createElementNS(svgNS, "tspan");
-                tspanData.textContent = formattedValue + " (" + pctOfGlobalTotal + "%)";
-                tspanData.setAttribute("x", (x + width / 2));
-                tspanData.setAttribute("dy", lineSpacing);
-                tspanData.setAttribute("style", "font-size: " + dataFontSize + "px; font-weight: normal; opacity: 0.9;");
-                textGroup.appendChild(tspanData);
-              }
-
-              rects[j].parentNode.appendChild(textGroup);
-              break;
-            }
-          }
-        }
-      });
-    });
-
-    treeMapChart.draw(dataTable, options);
+  function changeHomeTimelineGranularity(grain) {
+    HOME_TIMELINE_GRANULARITY = grain;
+    document.getElementById('home_grain_daily').classList.toggle('active', grain === 'DAILY');
+    document.getElementById('home_grain_monthly').classList.toggle('active', grain === 'MONTHLY');
+    document.getElementById('home_grain_yearly').classList.toggle('active', grain === 'YEARLY');
+    drawHomeTimelineChart();
   }
 
-  function changeTimelineGranularity(grain) {
-    let prevGranularity = TIMELINE_GRANULARITY;
-    TIMELINE_GRANULARITY = grain;
-    document.getElementById('timeline_daily').classList.toggle('active', grain === 'DAILY');
-    document.getElementById('timeline_monthly').classList.toggle('active', grain === 'MONTHLY');
-    document.getElementById('timeline_yearly').classList.toggle('active', grain === 'YEARLY');
-    
-    // If granularity changed, rebuild the timeline filters to reflect appropriate dates
-    if (prevGranularity !== grain) {
-      buildTimelineFilterCheckboxes();
-    }
-    drawTimelineChart();
-  }
-
-  function changeTimelineBreakdown(type) {
-    TIMELINE_BREAKDOWN = type;
-    document.getElementById('timeline_breakdown_none').classList.toggle('active', type === 'NONE');
-    document.getElementById('timeline_breakdown_context').classList.toggle('active', type === 'CONTEXT');
-    drawTimelineChart();
-  }
-
-  function changeTimelineCalculationMode(modeState) {
-    TIMELINE_CALC_MODE = modeState;
-    document.getElementById('timeline_mode_discrete').classList.toggle('active', modeState === 'DISCRETE');
-    document.getElementById('timeline_mode_cumulative').classList.toggle('active', modeState === 'CUMULATIVE');
-    drawTimelineChart();
-  }
-
-  function getSelectedTimelineCheckboxes(elementId) {
-    const container = document.getElementById(elementId);
-    if (!container) return new Set();
-    const inputs = container.getElementsByTagName('input');
-    let selected = new Set();
-    for (let i = 0; i < inputs.length; i++) { if (inputs[i].checked) selected.add(inputs[i].value); }
-    return selected;
-  }
-
-  function drawTimelineChart() {
-    let activeTabId = document.querySelector('.tab-content.active').id;
-    let targetContainerId = "";
-    
-    let allowedCheckboxesId = 'timeline_member_checkboxes';
-    let dataFieldMatch = 'Member';
-
-    if (activeTabId === 'member_view_tab') {
-      targetContainerId = 'member_timeline_chart_div';
-      allowedCheckboxesId = 'timeline_member_checkboxes';
-      dataFieldMatch = 'Member';
-    } else if (activeTabId === 'group_view_tab') {
-      targetContainerId = 'group_timeline_chart_div';
-      allowedCheckboxesId = 'timeline_group_checkboxes';
-      dataFieldMatch = 'Group';
-    } else if (activeTabId === 'color_view_tab') {
-      targetContainerId = 'color_timeline_chart_div';
-      allowedCheckboxesId = 'timeline_color_checkboxes';
-      dataFieldMatch = 'Color';
-    } else {
-      return; // Break early if layout defaults to Events tab view matrix
-    }
-
-    const container = document.getElementById(targetContainerId);
+  function drawHomeTimelineChart() {
+    const container = document.getElementById('home_timeline_chart_div');
     if (!container) return;
 
-    if (FILTERED_DATA.length === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No active records pass filters.</div>"; return; }
+    if (FILTERED_DATA.length === 0) { 
+      container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No active records pass filters.</div>"; 
+      return; 
+    }
 
-    const activeAllowedFilterSet = getSelectedTimelineCheckboxes(allowedCheckboxesId);
-
-    let timeIntervals = new Set(), entityVolumeMap = {}, rollupDataMap = {};
+    let timeIntervals = new Set(), rollupDataMap = {};
 
     FILTERED_DATA.forEach(row => {
       if (!row['Date']) return;
-      if (row[dataFieldMatch] && activeAllowedFilterSet.size > 0 && !activeAllowedFilterSet.has(row[dataFieldMatch])) return;
 
       let dateObj = new Date(row['Date']);
       if (isNaN(dateObj.getTime())) return;
 
-      let intervalStr = TIMELINE_GRANULARITY === 'DAILY' ? dateObj.toISOString().split('T')[0] : 
-                        (TIMELINE_GRANULARITY === 'MONTHLY' ? dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') : String(dateObj.getFullYear()));
+      let intervalStr = HOME_TIMELINE_GRANULARITY === 'DAILY' ? dateObj.toISOString().split('T')[0] : 
+                        (HOME_TIMELINE_GRANULARITY === 'MONTHLY' ? dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') : String(dateObj.getFullYear()));
 
       timeIntervals.add(intervalStr);
-      
-      let entityKey = 'Total';
-      if (TIMELINE_BREAKDOWN === 'CONTEXT') {
-        entityKey = row[dataFieldMatch] || 'Unknown';
-      }
-      
       let qtyVal = Number(row['Quantity']) || Number(row['Qty']) || 0;
-      entityVolumeMap[entityKey] = (entityVolumeMap[entityKey] || 0) + qtyVal;
-
-      if (!rollupDataMap[intervalStr]) rollupDataMap[intervalStr] = {};
-      rollupDataMap[intervalStr][entityKey] = (rollupDataMap[intervalStr][entityKey] || 0) + qtyVal;
+      rollupDataMap[intervalStr] = (rollupDataMap[intervalStr] || 0) + qtyVal;
     });
 
     let sortedIntervals = Array.from(timeIntervals).sort();
-    
-    let sortedSeriesKeys = Object.keys(entityVolumeMap).sort((a, b) => {
-      if (a === 'Total') return -1;
-      if (b === 'Total') return 1;
-      return entityVolumeMap[b] - entityVolumeMap[a];
+
+    if (sortedIntervals.length === 0) { 
+      container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No timeline matches under active selection.</div>"; 
+      return; 
+    }
+
+    let chartArray = [['Date', 'Quantity']];
+    sortedIntervals.forEach(interval => {
+      chartArray.push([interval, rollupDataMap[interval] || 0]);
     });
 
-    if (sortedIntervals.length === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No timeline matches under active selection.</div>"; return; }
-
-    let chartHeaders = ['Timeline Segment Interval'];
-    sortedSeriesKeys.forEach(k => { chartHeaders.push(k); });
-    let chartArray = [chartHeaders];
-
-    if (TIMELINE_CALC_MODE === 'CUMULATIVE') {
-      let ongoingSum = {}; sortedSeriesKeys.forEach(k => { ongoingSum[k] = 0; });
-      sortedIntervals.forEach(interval => {
-        let rowLine = [interval];
-        sortedSeriesKeys.forEach(key => { ongoingSum[key] += (rollupDataMap[interval][key] || 0); rowLine.push(ongoingSum[key]); });
-        chartArray.push(rowLine);
-      });
-    } else {
-      sortedIntervals.forEach(interval => {
-        let rowLine = [interval];
-        sortedSeriesKeys.forEach(key => { rowLine.push(rollupDataMap[interval][key] || 0); });
-        chartArray.push(rowLine);
-      });
-    }
-
     let chartDataTable = google.visualization.arrayToDataTable(chartArray);
-    let timelineChart = new google.visualization.LineChart(container);
-    
-    let seriesColors = [];
-    if (TIMELINE_BREAKDOWN === 'CONTEXT') {
-      if (dataFieldMatch === 'Member') {
-        seriesColors = sortedSeriesKeys.map(m => getMemberColorCode(m));
-      } else if (dataFieldMatch === 'Color') {
-        seriesColors = sortedSeriesKeys.map(c => (COLOR_MAP[String(c).trim()] || {primary: '#8ab4f8'}).primary);
-      } else {
-        seriesColors = ['#8ab4f8', '#03dac6', '#ffb74d', '#bb86fc', '#e67e22', '#ff4081', '#aaaaaa', '#27ae60'];
-      }
-    } else {
-      seriesColors = ['#8ab4f8'];
-    }
+    let timelineChart = new google.visualization.AreaChart(container);
 
     timelineChart.draw(chartDataTable, {
       backgroundColor: '#1e1e1e',
-      title: '(' + TIMELINE_GRANULARITY + " - " + (TIMELINE_CALC_MODE === 'CUMULATIVE' ? 'Cumulative Sum' : 'Interval Mode') + (TIMELINE_BREAKDOWN !== 'NONE' ? ' Breakdown by ' + dataFieldMatch : '') + ')',
-      titleTextStyle: { color: '#aaaaaa', fontSize: 12 },
-      hAxis: { textStyle: { fontSize: 11, color: '#aaaaaa' }, slantedText: true, slantedTextAngle: 30, gridlines: { count: 0 }, baselineColor: '#444444' },
-      vAxis: { title: 'Quantity Metric Sum', titleTextStyle: { color: '#aaaaaa' }, textStyle: { color: '#aaaaaa' }, minValue: 0, gridlines: { count: 0 }, baselineColor: '#444444' },
-      colors: seriesColors,
-      chartArea: { width: '80%', height: '70%' },
-      legend: { position: TIMELINE_BREAKDOWN === 'NONE' ? 'none' : 'right', textStyle: { fontSize: 11, color: '#e0e0e0' } },
+      hAxis: { 
+        textStyle: { fontSize: 11, color: '#aaaaaa' }, 
+        slantedText: true, 
+        slantedTextAngle: 30, 
+        gridlines: { count: 0 }, 
+        baselineColor: '#444444' 
+      },
+      vAxis: { 
+        title: 'Quantity', 
+        titleTextStyle: { color: '#aaaaaa' }, 
+        textStyle: { color: '#aaaaaa' }, 
+        minValue: 0, 
+        gridlines: { color: '#333333' }, 
+        baselineColor: '#444444' 
+      },
+      colors: ['#bb86fc'],
+      chartArea: { width: '85%', height: '70%' },
+      legend: { position: 'none' },
       lineWidth: 3,
       animation: { startup: true, duration: 400, easing: 'out' }
     });
+  }
+
+  function changeAnalyticsDimension(dim) {
+    ANALYTICS_DIMENSION = dim;
+    document.getElementById('analytics_dim_member').classList.toggle('active', dim === 'MEMBER');
+    document.getElementById('analytics_dim_group').classList.toggle('active', dim === 'GROUP');
+    document.getElementById('analytics_dim_color').classList.toggle('active', dim === 'COLOR');
+    renderAllViews();
+  }
+
+  function changeAnalyticsMode(mode) {
+    ANALYTICS_MODE = mode;
+    document.getElementById('analytics_mode_graph').classList.toggle('active', mode === 'GRAPH');
+    document.getElementById('analytics_mode_table').classList.toggle('active', mode === 'TABLE');
+    renderAllViews();
   }
 
   function switchTab(evt, tabId) {
