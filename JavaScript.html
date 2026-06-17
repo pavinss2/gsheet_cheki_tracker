@@ -745,6 +745,84 @@
     if (dataList.length === 0) { element.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No structural matching database records found.</div>"; return; }
     dataList.sort((a, b) => b[metricKey] - a[metricKey]);
     
+    if (viewKey === 'MEMBER') {
+      function getTrophySvg(rank) {
+        let color = "";
+        if (rank === 1) color = "#ffd700";
+        else if (rank === 2) color = "#c0c0c0";
+        else if (rank === 3) color = "#cd7f32";
+        else return "";
+        
+        return `<svg viewBox="0 0 24 24" width="20" height="20" fill="${color}" style="display:inline-block; vertical-align:middle;">
+          <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.44 1.72 4.48 4 4.9V19H5v2h14v-2h-2v-4.1c2.28-.42 4-2.46 4-4.9V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/>
+        </svg>`;
+      }
+
+      let html = '<div class="custom-member-bar-chart">';
+      let maxVal = Math.max(...dataList.map(item => item[metricKey])) || 1;
+      
+      dataList.forEach((r, idx) => {
+        let rank = idx + 1;
+        let rawVal = r[metricKey];
+        let barColor = getMemberColorCode(r['Member']) || '#4285f4';
+        let printableValue = metricKey === 'qty' ? rawVal.toLocaleString() : rawVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        if (metricKey === 'price') printableValue += ' THB';
+        
+        let widthPct = maxVal > 0 ? ((rawVal / maxVal) * 100) : 0;
+        
+        // Trophy SVG
+        let trophyHtml = '';
+        if (rank === 1) trophyHtml = getTrophySvg(1);
+        else if (rank === 2) trophyHtml = getTrophySvg(2);
+        else if (rank === 3) trophyHtml = getTrophySvg(3);
+        
+        // Member Metadata lookup for Image
+        let memberMeta = METADATA && METADATA.members ? METADATA.members.find(m => m.member_name === r['Member']) : null;
+        let imgUrl = (memberMeta && memberMeta.member_image && memberMeta.member_image !== 'None') ? memberMeta.member_image : '';
+        
+        let borderColor = 'rgba(255,255,255,0.4)';
+        let borderWidth = '1px';
+        if (rank === 1) { borderColor = '#ffd700'; borderWidth = '2px'; }
+        else if (rank === 2) { borderColor = '#c0c0c0'; borderWidth = '2px'; }
+        else if (rank === 3) { borderColor = '#cd7f32'; borderWidth = '2px'; }
+        
+        let avatarHtml = '';
+        if (imgUrl) {
+          avatarHtml = `<img src="${imgUrl}" class="chart-member-avatar" style="border: ${borderWidth} solid ${borderColor};" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />`;
+        }
+        
+        let initial = r['Member'] ? r['Member'].charAt(0).toUpperCase() : '?';
+        let fallbackBg = (memberMeta && memberMeta.color) ? memberMeta.color : '#444444';
+        let fallbackHtml = `<div class="chart-member-avatar-placeholder" style="border: ${borderWidth} solid ${borderColor}; background-color: ${fallbackBg}; display: ${imgUrl ? 'none' : 'flex'};">${initial}</div>`;
+        
+        html += `
+          <div class="chart-rank">#${rank}</div>
+          <div class="chart-trophy">${trophyHtml}</div>
+          <div class="chart-avatar-wrapper">${avatarHtml}${fallbackHtml}</div>
+          <div class="chart-name">${r['Member']}</div>
+          <div class="chart-bar-container">
+            <div class="chart-bar-outer">
+              <div class="chart-bar-inner" style="width: 0%; background-color: ${barColor};" data-width="${widthPct}"></div>
+            </div>
+            <span class="chart-bar-value">${printableValue}</span>
+          </div>
+        `;
+      });
+      html += '</div>';
+      element.innerHTML = html;
+      element.style.height = "auto";
+      
+      // Trigger animations
+      setTimeout(() => {
+        let bars = element.querySelectorAll('.chart-bar-inner');
+        bars.forEach(bar => {
+          bar.style.width = bar.getAttribute('data-width') + '%';
+        });
+      }, 50);
+      
+      return;
+    }
+    
     let labelMetric = metricKey === 'qty' ? 'Quantity' : 'Total Price (THB)';
     let chartArray = [[dimLabel, labelMetric, { role: 'style' }, { role: 'annotation' }, { role: 'tooltip', type: 'string', p: { html: true } }]];
     let maxVal = Math.max(...dataList.map(item => item[metricKey])) || 1;
