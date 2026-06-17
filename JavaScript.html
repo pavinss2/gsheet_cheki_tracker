@@ -586,10 +586,10 @@
     
     MEMBER_P_ARRAY.forEach((row, index) => {
       let safeGroup = String(row.Group).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-      buf.push('<tr><td class="thin-rank-col" style="color:#888; font-weight:bold;">' + (index + 1) + '</td><td style="' + getTextColorStyle(row.Color) + '">' + row.Member + '</td><td class="raw-clickable-cell" onclick="filterByCell(\'Group\', \'' + safeGroup + '\')">' + row.Group + '</td><td>' + row.qty.toLocaleString() + '</td><td><strong>' + (TOTAL_QTY_GLOBAL > 0 ? ((row.qty / TOTAL_QTY_GLOBAL) * 100).toFixed(1) : '0.0') + '%</strong></td><td>' + row.price.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr>');
+      buf.push('<tr><td class="thin-rank-col" style="color:#888; font-weight:bold;">' + (index + 1) + '</td><td style="' + getTextColorStyle(row.Color) + '">' + row.Member + '</td><td class="raw-clickable-cell" onclick="filterByCell(\'Group\', \'' + safeGroup + '\')">' + row.Group + '</td><td>' + row.qty.toLocaleString() + '</td><td><strong>' + (TOTAL_QTY_GLOBAL > 0 ? ((row.qty / TOTAL_QTY_GLOBAL) * 100).toFixed(1) : '0.0') + '%</strong></td><td>' + row.price.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</td></tr>');
     });
     
-    buf.push('<tr style="background:#1a365d; font-weight:bold; color:#ffffff;"><td class="thin-rank-col">-</td><td>TOTAL</td><td>-</td><td>' + TOTAL_QTY_GLOBAL.toLocaleString() + '</td><td>100.0%</td><td>' + TOTAL_PRICE_GLOBAL.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr></tbody></table>');
+    buf.push('<tr style="background:#1a365d; font-weight:bold; color:#ffffff;"><td class="thin-rank-col">-</td><td>TOTAL</td><td>-</td><td>' + TOTAL_QTY_GLOBAL.toLocaleString() + '</td><td>100.0%</td><td>' + TOTAL_PRICE_GLOBAL.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</td></tr></tbody></table>');
     container.innerHTML = buf.join('');
   }
 
@@ -600,9 +600,9 @@
 
     let buf = ['<table><thead><tr><th class="thin-rank-col">#</th><th ' + getCls('Group') + ' onclick="handlePivotSortClick(\'GROUP\', \'Group\')">Group</th><th ' + getCls('qty') + ' onclick="handlePivotSortClick(\'GROUP\', \'qty\')">Quantity</th><th ' + getCls('qty_pct') + ' onclick="handlePivotSortClick(\'GROUP\', \'qty_pct\')">% Qty</th><th ' + getCls('price') + ' onclick="handlePivotSortClick(\'GROUP\', \'price\')">Total Price (THB)</th></tr></thead><tbody>'];
     GROUP_P_ARRAY.forEach((row, index) => {
-      buf.push('<tr><td class="thin-rank-col" style="color:#888; font-weight:bold;">' + (index + 1) + '</td><td>' + row.Group + '</td><td>' + row.qty.toLocaleString() + '</td><td><strong>' + (TOTAL_QTY_GLOBAL > 0 ? ((row.qty / TOTAL_QTY_GLOBAL) * 100).toFixed(1) : '0.0') + '%</strong></td><td>' + row.price.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr>');
+      buf.push('<tr><td class="thin-rank-col" style="color:#888; font-weight:bold;">' + (index + 1) + '</td><td>' + row.Group + '</td><td>' + row.qty.toLocaleString() + '</td><td><strong>' + (TOTAL_QTY_GLOBAL > 0 ? ((row.qty / TOTAL_QTY_GLOBAL) * 100).toFixed(1) : '0.0') + '%</strong></td><td>' + row.price.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</td></tr>');
     });
-    buf.push('<tr style="background:#1a365d; font-weight:bold; color:#ffffff;"><td class="thin-rank-col">-</td><td>TOTAL</td><td>' + TOTAL_QTY_GLOBAL.toLocaleString() + '</td><td>100.0%</td><td>' + TOTAL_PRICE_GLOBAL.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr></tbody></table>');
+    buf.push('<tr style="background:#1a365d; font-weight:bold; color:#ffffff;"><td class="thin-rank-col">-</td><td>TOTAL</td><td>' + TOTAL_QTY_GLOBAL.toLocaleString() + '</td><td>100.0%</td><td>' + TOTAL_PRICE_GLOBAL.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</td></tr></tbody></table>');
     container.innerHTML = buf.join('');
   }
 
@@ -613,9 +613,9 @@
 
     let buf = ['<table><thead><tr><th class="thin-rank-col">#</th><th ' + getCls('Color') + ' onclick="handlePivotSortClick(\'COLOR\', \'Color\')">Color</th><th ' + getCls('qty') + ' onclick="handlePivotSortClick(\'COLOR\', \'qty\')">Quantity</th><th ' + getCls('qty_pct') + ' onclick="handlePivotSortClick(\'COLOR\', \'qty_pct\')">% Qty</th><th ' + getCls('price') + ' onclick="handlePivotSortClick(\'COLOR\', \'price\')">Total Price (THB)</th></tr></thead><tbody>'];
     COLOR_P_ARRAY.forEach((row, index) => {
-      buf.push('<tr><td class="thin-rank-col" style="color:#888; font-weight:bold;">' + (index + 1) + '</td><td style="' + getTextColorStyle(row.Color) + '">' + row.Color + '</td><td>' + row.qty.toLocaleString() + '</td><td><strong>' + (TOTAL_QTY_GLOBAL > 0 ? ((row.qty / TOTAL_QTY_GLOBAL) * 100).toFixed(1) : '0.0') + '%</strong></td><td>' + row.price.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr>');
+      buf.push('<tr><td class="thin-rank-col" style="color:#888; font-weight:bold;">' + (index + 1) + '</td><td style="' + getTextColorStyle(row.Color) + '">' + row.Color + '</td><td>' + row.qty.toLocaleString() + '</td><td><strong>' + (TOTAL_QTY_GLOBAL > 0 ? ((row.qty / TOTAL_QTY_GLOBAL) * 100).toFixed(1) : '0.0') + '%</strong></td><td>' + row.price.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</td></tr>');
     });
-    buf.push('<tr style="background:#1a365d; font-weight:bold; color:#ffffff;"><td class="thin-rank-col">-</td><td>TOTAL</td><td>' + TOTAL_QTY_GLOBAL.toLocaleString() + '</td><td>100.0%</td><td>' + TOTAL_PRICE_GLOBAL.toLocaleString(undefined, {minimumFractionDigits:2}) + '</td></tr></tbody></table>');
+    buf.push('<tr style="background:#1a365d; font-weight:bold; color:#ffffff;"><td class="thin-rank-col">-</td><td>TOTAL</td><td>' + TOTAL_QTY_GLOBAL.toLocaleString() + '</td><td>100.0%</td><td>' + TOTAL_PRICE_GLOBAL.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</td></tr></tbody></table>');
     container.innerHTML = buf.join('');
   }
 
@@ -811,8 +811,17 @@
         labelName = nameVal.replace(/\s*\(.*?\)\s*/g, '').trim();
       }
       
-      let printableValue = metricKey === 'qty' ? rawVal.toLocaleString() : rawVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      if (metricKey === 'price') printableValue += '<span class="chart-unit"> THB</span>';
+      let printableValue = '';
+      if (metricKey === 'qty') {
+        printableValue = rawVal >= 1000 ? (rawVal / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : rawVal.toLocaleString();
+      } else {
+        if (rawVal >= 1000) {
+          printableValue = (rawVal / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+        } else {
+          printableValue = Math.round(rawVal).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+        }
+        printableValue += '<span class="chart-unit"> THB</span>';
+      }
       
       let widthPct = maxVal > 0 ? ((rawVal / maxVal) * 100) : 0;
       
