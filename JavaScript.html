@@ -807,7 +807,7 @@
       }
       
       let printableValue = metricKey === 'qty' ? rawVal.toLocaleString() : rawVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      if (metricKey === 'price') printableValue += ' THB';
+      if (metricKey === 'price') printableValue += '<span class="chart-unit"> THB</span>';
       
       let widthPct = maxVal > 0 ? ((rawVal / maxVal) * 100) : 0;
       
