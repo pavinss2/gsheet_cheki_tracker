@@ -56,6 +56,19 @@
   let METRIC_SELECTIONS = { MEMBER: 'qty', GROUP: 'qty', COLOR: 'qty' };
   let HEATMAP_TOP_N = { MEMBER: 20, GROUP: 20, COLOR: 20 };
 
+  // Analytics tab state variables
+  let ANALYTICS_DIMENSION = 'MEMBER';
+  let ANALYTICS_MODE = 'GRAPH';
+
+  // Home tab timeline state variable
+  let HOME_TIMELINE_GRANULARITY = 'DAILY';
+
+  // Calendar tab state variables
+  let now = new Date();
+  let CALENDAR_YEAR = now.getFullYear();
+  let CALENDAR_MONTH = now.getMonth();
+  let CALENDAR_SELECTED_DATE = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
   let TOTAL_QTY_GLOBAL = 0;
   let TOTAL_PRICE_GLOBAL = 0;
 
@@ -145,7 +158,6 @@
     updateDropdownElement('filter_nationality', Array.from(nationalities).sort(), selectedNat, "-- All Nationalities --");
     updateDropdownElement('filter_company', Array.from(companies).sort(), selectedCmp, "-- All Companies --");
 
-    buildTimelineFilterCheckboxes();
   }
 
   function updateDropdownElement(id, items, selectedValue, defaultText) {
@@ -160,76 +172,6 @@
       frag.appendChild(opt);
     });
     select.appendChild(frag);
-  }
-
-  function buildTimelineFilterCheckboxes() {
-    const memBox = document.getElementById('timeline_member_checkboxes');
-    const grpBox = document.getElementById('timeline_group_checkboxes');
-    const colBox = document.getElementById('timeline_color_checkboxes');
-    if (!memBox || !grpBox || !colBox) return;
-    
-    const currentSelectedMembers = getSelectedTimelineCheckboxes('timeline_member_checkboxes');
-    const currentSelectedGroups = getSelectedTimelineCheckboxes('timeline_group_checkboxes');
-    const currentSelectedColors = getSelectedTimelineCheckboxes('timeline_color_checkboxes');
-    const isFirstRun = (currentSelectedMembers.size === 0 && currentSelectedGroups.size === 0 && currentSelectedColors.size === 0);
-
-    const activeMembers = new Set();
-    const activeGroups = new Set();
-    const activeColors = new Set();
-
-    FILTERED_DATA.forEach(row => {
-      if (row['Member']) activeMembers.add(row['Member']);
-      if (row['Group']) activeGroups.add(row['Group']);
-      if (row['Color']) activeColors.add(row['Color']);
-    });
-
-    const sortedMembers = Array.from(activeMembers).sort();
-    const sortedGroups = Array.from(activeGroups).sort();
-    const sortedColors = Array.from(activeColors).sort();
-    
-    memBox.innerHTML = sortedMembers.map(m => {
-      let isChecked = isFirstRun || currentSelectedMembers.has(m) ? 'checked' : '';
-      return '<label class="checkbox-item"><input type="checkbox" value="' + m + '" ' + isChecked + ' onchange="drawTimelineChart()"> ' + m + '</label>';
-    }).join('') || '<span style="font-size:12px; color:#666; padding:6px;">No members available</span>';
-
-    grpBox.innerHTML = sortedGroups.map(g => {
-      let isChecked = isFirstRun || currentSelectedGroups.has(g) ? 'checked' : '';
-      return '<label class="checkbox-item"><input type="checkbox" value="' + g + '" ' + isChecked + ' onchange="drawTimelineChart()"> ' + g + '</label>';
-    }).join('') || '<span style="font-size:12px; color:#666; padding:6px;">No groups available</span>';
-
-    colBox.innerHTML = sortedColors.map(c => {
-      let isChecked = isFirstRun || currentSelectedColors.has(c) ? 'checked' : '';
-      return '<label class="checkbox-item"><input type="checkbox" value="' + c + '" ' + isChecked + ' onchange="drawTimelineChart()"> ' + c + '</label>';
-    }).join('') || '<span style="font-size:12px; color:#666; padding:6px;">No colors available</span>';
-
-    filterCheckboxesByText('timeline_member_search', 'timeline_member_checkboxes');
-    filterCheckboxesByText('timeline_group_search', 'timeline_group_checkboxes');
-    filterCheckboxesByText('timeline_color_search', 'timeline_color_checkboxes');
-  }
-
-  function filterCheckboxesByText(searchBoxId, checkboxContainerId) {
-    const searchBox = document.getElementById(searchBoxId);
-    const container = document.getElementById(checkboxContainerId);
-    if (!searchBox || !container) return;
-    const query = searchBox.value.toLowerCase().trim();
-    const labels = container.getElementsByClassName('checkbox-item');
-    for (let i = 0; i < labels.length; i++) {
-      let textContent = labels[i].textContent || labels[i].innerText;
-      labels[i].style.display = textContent.toLowerCase().includes(query) ? 'flex' : 'none';
-    }
-  }
-
-  function toggleSubCheckboxes(containerId, checkAllState) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const labels = container.getElementsByClassName('checkbox-item');
-    for (let i = 0; i < labels.length; i++) {
-      if (labels[i].style.display !== 'none') {
-        const input = labels[i].getElementsByTagName('input')[0];
-        if (input) input.checked = checkAllState;
-      }
-    }
-    drawTimelineChart();
   }
 
   function applyFilters() {
@@ -366,68 +308,46 @@
   }
 
   function renderAllViews() {
-    renderRawTable();
-    renderEventsPivotTable();
-    renderMetadataTables();
-
-    ['MEMBER', 'GROUP', 'COLOR'].forEach(vk => {
-      let lower = vk.toLowerCase();
-      let mode = PIVOT_MODES[vk];
-      
-      document.getElementById(lower + '_table_wrapper').style.display = (mode === 'TABLE') ? 'block' : 'none';
-      document.getElementById(lower + '_heatmap_wrapper').style.display = (mode === 'HEATMAP') ? 'block' : 'none';
-      document.getElementById(lower + '_graph_wrapper').style.display = (mode === 'GRAPH') ? 'block' : 'none';
-      document.getElementById(lower + '_timeline_wrapper').style.display = (mode === 'TIMELINE') ? 'block' : 'none';
-      
-      if (mode === 'TABLE') {
-        if (vk === 'MEMBER') renderMemberPivotHTML();
-        else if (vk === 'GROUP') renderGroupPivotHTML();
-        else renderColorPivotHTML();
-      } else if (mode === 'HEATMAP') {
-        drawHeatmapWidget(vk);
-      } else if (mode === 'GRAPH') {
-        drawDimensionBarGraph(vk);
-      } else if (mode === 'TIMELINE') {
-        drawTimelineChart();
-      }
-    });
-    handleTimelineControlsVisibility();
+    let activeTab = document.querySelector('.tab-content.active');
+    if (!activeTab) return;
+    
+    if (activeTab.id === 'home_view_tab') {
+      drawHomeTimelineChart();
+    } else if (activeTab.id === 'raw_data_tab') {
+      renderRawTable();
+      renderMetadataTables();
+    } else if (activeTab.id === 'analytics_tab') {
+      renderAnalyticsView();
+    } else if (activeTab.id === 'calendar_tab') {
+      renderCalendar();
+      renderCalendarDayDetails(CALENDAR_SELECTED_DATE);
+    } else if (activeTab.id === 'events_view_tab') {
+      renderEventsPivotTable();
+    }
   }
 
-  function handleTimelineControlsVisibility() {
-    let sharedControls = document.getElementById('shared_timeline_controls_wrapper');
-    let activeTab = document.querySelector('.tab-content.active');
-    let isTimelineActive = false;
-    let labelBtn = document.getElementById('timeline_breakdown_context');
-    
-    if (activeTab) {
-      if (activeTab.id === 'member_view_tab' && PIVOT_MODES.MEMBER === 'TIMELINE') {
-        isTimelineActive = true;
-        if(labelBtn) labelBtn.innerText = "By Member";
-        document.getElementById('subfilter_box_member').style.display = 'flex';
-        document.getElementById('subfilter_box_group').style.display = 'none';
-        document.getElementById('subfilter_box_color').style.display = 'none';
-      } else if (activeTab.id === 'group_view_tab' && PIVOT_MODES.GROUP === 'TIMELINE') {
-        isTimelineActive = true;
-        if(labelBtn) labelBtn.innerText = "By Group";
-        document.getElementById('subfilter_box_member').style.display = 'none';
-        document.getElementById('subfilter_box_group').style.display = 'flex';
-        document.getElementById('subfilter_box_color').style.display = 'none';
-      } else if (activeTab.id === 'color_view_tab' && PIVOT_MODES.COLOR === 'TIMELINE') {
-        isTimelineActive = true;
-        if(labelBtn) labelBtn.innerText = "By Color";
-        document.getElementById('subfilter_box_member').style.display = 'none';
-        document.getElementById('subfilter_box_group').style.display = 'none';
-        document.getElementById('subfilter_box_color').style.display = 'flex';
+  function renderAnalyticsView() {
+    ['MEMBER', 'GROUP', 'COLOR'].forEach(vk => {
+      let lower = vk.toLowerCase();
+      let tableWrap = document.getElementById(lower + '_table_wrapper');
+      let graphWrap = document.getElementById(lower + '_graph_wrapper');
+      
+      if (vk === ANALYTICS_DIMENSION) {
+        if (tableWrap) tableWrap.style.display = (ANALYTICS_MODE === 'TABLE') ? 'block' : 'none';
+        if (graphWrap) graphWrap.style.display = (ANALYTICS_MODE === 'GRAPH') ? 'block' : 'none';
+        
+        if (ANALYTICS_MODE === 'TABLE') {
+          if (vk === 'MEMBER') renderMemberPivotHTML();
+          else if (vk === 'GROUP') renderGroupPivotHTML();
+          else renderColorPivotHTML();
+        } else {
+          drawDimensionBarGraph(vk);
+        }
+      } else {
+        if (tableWrap) tableWrap.style.display = 'none';
+        if (graphWrap) graphWrap.style.display = 'none';
       }
-    }
-    
-    if (isTimelineActive && activeTab) {
-      sharedControls.style.display = 'block';
-      activeTab.appendChild(sharedControls);
-    } else {
-      sharedControls.style.display = 'none';
-    }
+    });
   }
 
   function handleRawSort(columnName) {
@@ -711,26 +631,13 @@
   function changePivotMetric(viewKey, metric) {
     METRIC_SELECTIONS[viewKey] = metric;
     let lower = viewKey.toLowerCase();
-    if(document.getElementById(lower + '_hm_qty')) {
-      document.getElementById(lower + '_hm_qty').classList.toggle('active', metric === 'qty');
-      document.getElementById(lower + '_hm_price').classList.toggle('active', metric === 'price');
-    }
     if(document.getElementById(lower + '_gr_qty')) {
       document.getElementById(lower + '_gr_qty').classList.toggle('active', metric === 'qty');
       document.getElementById(lower + '_gr_price').classList.toggle('active', metric === 'price');
     }
-    if (PIVOT_MODES[viewKey] === 'HEATMAP') drawHeatmapWidget(viewKey);
-    else if (PIVOT_MODES[viewKey] === 'GRAPH') drawDimensionBarGraph(viewKey);
-  }
-
-  function changeHeatmapTopN(viewKey, nValue) {
-    HEATMAP_TOP_N[viewKey] = nValue;
-    let lower = viewKey.toLowerCase();
-    [10, 20, 50].forEach(val => {
-      let el = document.getElementById(lower + '_hm_top' + val);
-      if (el) el.classList.toggle('active', val === nValue);
-    });
-    drawHeatmapWidget(viewKey);
+    if (ANALYTICS_MODE === 'GRAPH' && ANALYTICS_DIMENSION === viewKey) {
+      drawDimensionBarGraph(viewKey);
+    }
   }
 
   function drawDimensionBarGraph(viewKey) {
@@ -884,275 +791,274 @@
     }, 50);
   }
 
-  function drawHeatmapWidget(viewKey) {
-    let containerId = viewKey.toLowerCase() + '_heatmap_container';
-    let element = document.getElementById(containerId);
-    if (!element) return;
 
-    let metricKey = METRIC_SELECTIONS[viewKey];
-    let dataList = viewKey === 'MEMBER' ? [...MEMBER_P_ARRAY] : (viewKey === 'GROUP' ? [...GROUP_P_ARRAY] : [...COLOR_P_ARRAY]);
-    let dimField = viewKey === 'MEMBER' ? 'Member' : (viewKey === 'GROUP' ? 'Group' : 'Color');
 
-    dataList.sort((a, b) => b[metricKey] - a[metricKey]);
-    
-    let limitBound = HEATMAP_TOP_N[viewKey] || 20;
-    let topSelection = dataList.slice(0, limitBound);
-
-    if (topSelection.length === 0) { element.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No operational metrics matching thresholds.</div>"; return; }
-
-    let chartData = [[dimField + ' Element', 'Parent Core', 'Size Metric', 'Color Rule Identifier']];
-    let parentNodeName = viewKey + 's Core';
-    chartData.push([parentNodeName, null, 0, 0]);
-    topSelection.forEach((r, idx) => { chartData.push([r[dimField], parentNodeName, r[metricKey], idx + 1]); });
-
-    let dataTable = google.visualization.arrayToDataTable(chartData);
-    let treeMapChart = new google.visualization.TreeMap(element);
-
-    let rankOneValue = topSelection[0][metricKey] || 1;
-    let globalBaseTotal = metricKey === 'qty' ? TOTAL_QTY_GLOBAL : TOTAL_PRICE_GLOBAL;
-
-    let options = {
-      minColor: '#1a365d', midColor: '#2b6cb0', maxColor: '#3182ce',
-      headerHeight: 0, fontColor: 'transparent', fontSize: 1,
-      showScale: false, useWeightedAverageForColor: false, maxPostDepth: 0, hintOpacity: 0
-    };
-
-    google.visualization.events.addListener(treeMapChart, 'ready', function() {
-      let rects = element.getElementsByTagName('rect');
-      let textElements = element.getElementsByTagName('text');
-      for (let t = 0; t < textElements.length; t++) textElements[t].style.display = 'none';
-
-      topSelection.forEach((item, idx) => {
-        let rankNum = idx + 1;
-        let rawLabel = item[dimField];
-        let matchedHex = '#3182ce';
-        
-        if (viewKey === 'MEMBER' || viewKey === 'COLOR') {
-          matchedHex = (COLOR_MAP[viewKey === 'MEMBER' ? item.Color : item[dimField]] || {primary: '#3182ce'}).primary;
-        } else {
-          let maxVal = Math.max(...topSelection.map(i => i[metricKey])) || 1;
-          let minVal = Math.min(...topSelection.map(i => i[metricKey])) || 0;
-          let ratio = 1 - (maxVal === minVal ? 1 : (item[metricKey] - minVal) / (maxVal - minVal));
-          matchedHex = 'rgb(' + Math.round(26 + 112 * ratio) + ',' + Math.round(54 + 126 * ratio) + ',' + Math.round(93 + 155 * ratio) + ')';
-        }
-
-        let currentVal = item[metricKey];
-        let relativeRatioToRankOne = currentVal / rankOneValue; 
-        let pctOfGlobalTotal = globalBaseTotal > 0 ? ((currentVal / globalBaseTotal) * 100).toFixed(1) : '0.0';
-        let formattedValue = metricKey === 'qty' ? currentVal.toLocaleString() : '฿' + currentVal.toLocaleString(undefined, {maximumFractionDigits:0});
-
-        let nameFontSize = Math.max(9, Math.round(16 * relativeRatioToRankOne));
-        let dataFontSize = Math.max(8, Math.round(12 * relativeRatioToRankOne));
-        let lineSpacing = Math.max(10, Math.round(14 * relativeRatioToRankOne));
-
-        let showMetricsRow = (nameFontSize >= 11) || (rankNum <= 10);
-        if (rankNum <= 10 && nameFontSize < 11) {
-          nameFontSize = 11;
-          dataFontSize = 9;
-          lineSpacing = 11;
-        }
-
-        for (let j = 0; j < rects.length; j++) {
-          let width = parseFloat(rects[j].getAttribute('width'));
-          let height = parseFloat(rects[j].getAttribute('height'));
-          let x = parseFloat(rects[j].getAttribute('x'));
-          let y = parseFloat(rects[j].getAttribute('y'));
-
-          if (width > 0 && height > 0 && x >= 0 && y >= 0 && width < element.offsetWidth) {
-            if (!rects[j].hasAttribute('data-custom-rendered')) {
-              rects[j].setAttribute('fill', matchedHex);
-              rects[j].setAttribute('data-custom-rendered', 'true');
-              rects[j].setAttribute('stroke', '#363636');      
-              rects[j].setAttribute('stroke-width', '1.2');     
-
-              let fontColor = '#ffffff';
-              let checkColor = viewKey === 'MEMBER' ? item.Color : item[dimField];
-              if ((viewKey === 'MEMBER' || viewKey === 'COLOR') && (checkColor === 'White' || checkColor === 'Yellow')) fontColor = '#121212';
-
-              let svgNS = "http://www.w3.org/2000/svg";
-              let textGroup = document.createElementNS(svgNS, "text");
-              textGroup.setAttribute("x", (x + width / 2));
-              textGroup.setAttribute("y", (y + height / 2 - (showMetricsRow ? 2 : -4)));
-              textGroup.setAttribute("text-anchor", "middle");
-              textGroup.setAttribute("fill", fontColor);
-              textGroup.setAttribute("style", "font-family: sans-serif; font-weight: bold; pointer-events: none;");
-
-              let tspanLine1 = document.createElementNS(svgNS, "tspan");
-              tspanLine1.textContent = "#" + rankNum + " " + rawLabel;
-              tspanLine1.setAttribute("x", (x + width / 2));
-              tspanLine1.setAttribute("style", "font-size: " + nameFontSize + "px;");
-              textGroup.appendChild(tspanLine1);
-
-              if (showMetricsRow) {
-                let tspanData = document.createElementNS(svgNS, "tspan");
-                tspanData.textContent = formattedValue + " (" + pctOfGlobalTotal + "%)";
-                tspanData.setAttribute("x", (x + width / 2));
-                tspanData.setAttribute("dy", lineSpacing);
-                tspanData.setAttribute("style", "font-size: " + dataFontSize + "px; font-weight: normal; opacity: 0.9;");
-                textGroup.appendChild(tspanData);
-              }
-
-              rects[j].parentNode.appendChild(textGroup);
-              break;
-            }
-          }
-        }
-      });
+  function changeHomeTimelineGranularity(grain) {
+    HOME_TIMELINE_GRANULARITY = grain.toUpperCase();
+    ['DAILY', 'MONTHLY', 'YEARLY'].forEach(g => {
+      let btn = document.getElementById('home_grain_' + g.toLowerCase());
+      if (btn) btn.classList.toggle('active', g === HOME_TIMELINE_GRANULARITY);
     });
-
-    treeMapChart.draw(dataTable, options);
+    drawHomeTimelineChart();
   }
 
-  function changeTimelineGranularity(grain) {
-    let prevGranularity = TIMELINE_GRANULARITY;
-    TIMELINE_GRANULARITY = grain;
-    document.getElementById('timeline_daily').classList.toggle('active', grain === 'DAILY');
-    document.getElementById('timeline_monthly').classList.toggle('active', grain === 'MONTHLY');
-    document.getElementById('timeline_yearly').classList.toggle('active', grain === 'YEARLY');
-    
-    // If granularity changed, rebuild the timeline filters to reflect appropriate dates
-    if (prevGranularity !== grain) {
-      buildTimelineFilterCheckboxes();
-    }
-    drawTimelineChart();
-  }
-
-  function changeTimelineBreakdown(type) {
-    TIMELINE_BREAKDOWN = type;
-    document.getElementById('timeline_breakdown_none').classList.toggle('active', type === 'NONE');
-    document.getElementById('timeline_breakdown_context').classList.toggle('active', type === 'CONTEXT');
-    drawTimelineChart();
-  }
-
-  function changeTimelineCalculationMode(modeState) {
-    TIMELINE_CALC_MODE = modeState;
-    document.getElementById('timeline_mode_discrete').classList.toggle('active', modeState === 'DISCRETE');
-    document.getElementById('timeline_mode_cumulative').classList.toggle('active', modeState === 'CUMULATIVE');
-    drawTimelineChart();
-  }
-
-  function getSelectedTimelineCheckboxes(elementId) {
-    const container = document.getElementById(elementId);
-    if (!container) return new Set();
-    const inputs = container.getElementsByTagName('input');
-    let selected = new Set();
-    for (let i = 0; i < inputs.length; i++) { if (inputs[i].checked) selected.add(inputs[i].value); }
-    return selected;
-  }
-
-  function drawTimelineChart() {
-    let activeTabId = document.querySelector('.tab-content.active').id;
-    let targetContainerId = "";
-    
-    let allowedCheckboxesId = 'timeline_member_checkboxes';
-    let dataFieldMatch = 'Member';
-
-    if (activeTabId === 'member_view_tab') {
-      targetContainerId = 'member_timeline_chart_div';
-      allowedCheckboxesId = 'timeline_member_checkboxes';
-      dataFieldMatch = 'Member';
-    } else if (activeTabId === 'group_view_tab') {
-      targetContainerId = 'group_timeline_chart_div';
-      allowedCheckboxesId = 'timeline_group_checkboxes';
-      dataFieldMatch = 'Group';
-    } else if (activeTabId === 'color_view_tab') {
-      targetContainerId = 'color_timeline_chart_div';
-      allowedCheckboxesId = 'timeline_color_checkboxes';
-      dataFieldMatch = 'Color';
-    } else {
-      return; // Break early if layout defaults to Events tab view matrix
-    }
-
-    const container = document.getElementById(targetContainerId);
+  function drawHomeTimelineChart() {
+    const container = document.getElementById('home_timeline_chart_div');
     if (!container) return;
+    if (FILTERED_DATA.length === 0) {
+      container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No active records pass filters.</div>";
+      return;
+    }
 
-    if (FILTERED_DATA.length === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No active records pass filters.</div>"; return; }
-
-    const activeAllowedFilterSet = getSelectedTimelineCheckboxes(allowedCheckboxesId);
-
-    let timeIntervals = new Set(), entityVolumeMap = {}, rollupDataMap = {};
-
+    let timeIntervals = new Set(), rollupDataMap = {};
     FILTERED_DATA.forEach(row => {
       if (!row['Date']) return;
-      if (row[dataFieldMatch] && activeAllowedFilterSet.size > 0 && !activeAllowedFilterSet.has(row[dataFieldMatch])) return;
-
       let dateObj = new Date(row['Date']);
       if (isNaN(dateObj.getTime())) return;
 
-      let intervalStr = TIMELINE_GRANULARITY === 'DAILY' ? dateObj.toISOString().split('T')[0] : 
-                        (TIMELINE_GRANULARITY === 'MONTHLY' ? dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') : String(dateObj.getFullYear()));
-
-      timeIntervals.add(intervalStr);
-      
-      let entityKey = 'Total';
-      if (TIMELINE_BREAKDOWN === 'CONTEXT') {
-        entityKey = row[dataFieldMatch] || 'Unknown';
+      let intervalStr = '';
+      if (HOME_TIMELINE_GRANULARITY === 'DAILY') {
+        intervalStr = dateObj.toISOString().split('T')[0];
+      } else if (HOME_TIMELINE_GRANULARITY === 'MONTHLY') {
+        intervalStr = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0');
+      } else {
+        intervalStr = String(dateObj.getFullYear());
       }
-      
+      timeIntervals.add(intervalStr);
       let qtyVal = Number(row['Quantity']) || Number(row['Qty']) || 0;
-      entityVolumeMap[entityKey] = (entityVolumeMap[entityKey] || 0) + qtyVal;
-
-      if (!rollupDataMap[intervalStr]) rollupDataMap[intervalStr] = {};
-      rollupDataMap[intervalStr][entityKey] = (rollupDataMap[intervalStr][entityKey] || 0) + qtyVal;
+      rollupDataMap[intervalStr] = (rollupDataMap[intervalStr] || 0) + qtyVal;
     });
 
     let sortedIntervals = Array.from(timeIntervals).sort();
-    
-    let sortedSeriesKeys = Object.keys(entityVolumeMap).sort((a, b) => {
-      if (a === 'Total') return -1;
-      if (b === 'Total') return 1;
-      return entityVolumeMap[b] - entityVolumeMap[a];
+    if (sortedIntervals.length === 0) {
+      container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No timeline matches under active selection.</div>";
+      return;
+    }
+
+    let chartArray = [['Date', 'Quantity']];
+    sortedIntervals.forEach(interval => {
+      chartArray.push([interval, rollupDataMap[interval] || 0]);
     });
 
-    if (sortedIntervals.length === 0) { container.innerHTML = "<div style='padding:20px; text-align:center; color:#aaaaaa;'>No timeline matches under active selection.</div>"; return; }
-
-    let chartHeaders = ['Timeline Segment Interval'];
-    sortedSeriesKeys.forEach(k => { chartHeaders.push(k); });
-    let chartArray = [chartHeaders];
-
-    if (TIMELINE_CALC_MODE === 'CUMULATIVE') {
-      let ongoingSum = {}; sortedSeriesKeys.forEach(k => { ongoingSum[k] = 0; });
-      sortedIntervals.forEach(interval => {
-        let rowLine = [interval];
-        sortedSeriesKeys.forEach(key => { ongoingSum[key] += (rollupDataMap[interval][key] || 0); rowLine.push(ongoingSum[key]); });
-        chartArray.push(rowLine);
-      });
-    } else {
-      sortedIntervals.forEach(interval => {
-        let rowLine = [interval];
-        sortedSeriesKeys.forEach(key => { rowLine.push(rollupDataMap[interval][key] || 0); });
-        chartArray.push(rowLine);
-      });
-    }
-
     let chartDataTable = google.visualization.arrayToDataTable(chartArray);
-    let timelineChart = new google.visualization.LineChart(container);
-    
-    let seriesColors = [];
-    if (TIMELINE_BREAKDOWN === 'CONTEXT') {
-      if (dataFieldMatch === 'Member') {
-        seriesColors = sortedSeriesKeys.map(m => getMemberColorCode(m));
-      } else if (dataFieldMatch === 'Color') {
-        seriesColors = sortedSeriesKeys.map(c => (COLOR_MAP[String(c).trim()] || {primary: '#8ab4f8'}).primary);
-      } else {
-        seriesColors = ['#8ab4f8', '#03dac6', '#ffb74d', '#bb86fc', '#e67e22', '#ff4081', '#aaaaaa', '#27ae60'];
-      }
-    } else {
-      seriesColors = ['#8ab4f8'];
-    }
+    let areaChart = new google.visualization.AreaChart(container);
 
-    timelineChart.draw(chartDataTable, {
+    areaChart.draw(chartDataTable, {
       backgroundColor: '#1e1e1e',
-      title: '(' + TIMELINE_GRANULARITY + " - " + (TIMELINE_CALC_MODE === 'CUMULATIVE' ? 'Cumulative Sum' : 'Interval Mode') + (TIMELINE_BREAKDOWN !== 'NONE' ? ' Breakdown by ' + dataFieldMatch : '') + ')',
-      titleTextStyle: { color: '#aaaaaa', fontSize: 12 },
-      hAxis: { textStyle: { fontSize: 11, color: '#aaaaaa' }, slantedText: true, slantedTextAngle: 30, gridlines: { count: 0 }, baselineColor: '#444444' },
-      vAxis: { title: 'Quantity Metric Sum', titleTextStyle: { color: '#aaaaaa' }, textStyle: { color: '#aaaaaa' }, minValue: 0, gridlines: { count: 0 }, baselineColor: '#444444' },
-      colors: seriesColors,
-      chartArea: { width: '80%', height: '70%' },
-      legend: { position: TIMELINE_BREAKDOWN === 'NONE' ? 'none' : 'right', textStyle: { fontSize: 11, color: '#e0e0e0' } },
+      hAxis: {
+        textStyle: { fontSize: 11, color: '#aaaaaa', fontFamily: 'Inter' },
+        slantedText: true,
+        slantedTextAngle: 30,
+        gridlines: { count: 0 },
+        baselineColor: '#444444'
+      },
+      vAxis: {
+        title: 'Quantity',
+        titleTextStyle: { color: '#aaaaaa', fontSize: 11, fontFamily: 'Inter' },
+        textStyle: { color: '#aaaaaa', fontFamily: 'Inter' },
+        minValue: 0,
+        gridlines: { color: '#2d2d2d' },
+        baselineColor: '#444444'
+      },
+      colors: ['#8ab4f8'],
+      areaOpacity: 0.15,
+      chartArea: { width: '85%', height: '70%', left: '8%', right: '4%' },
+      legend: { position: 'none' },
       lineWidth: 3,
       animation: { startup: true, duration: 400, easing: 'out' }
     });
+  }
+
+  function changeAnalyticsDimension(dim) {
+    ANALYTICS_DIMENSION = dim;
+    ['MEMBER', 'GROUP', 'COLOR'].forEach(d => {
+      let btn = document.getElementById('analytics_dim_' + d.toLowerCase());
+      if (btn) btn.classList.toggle('active', d === dim);
+    });
+    renderAllViews();
+  }
+
+  function changeAnalyticsMode(mode) {
+    ANALYTICS_MODE = mode;
+    ['GRAPH', 'TABLE'].forEach(m => {
+      let btn = document.getElementById('analytics_mode_' + m.toLowerCase());
+      if (btn) btn.classList.toggle('active', m === mode);
+    });
+    renderAllViews();
+  }
+
+  const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  function renderCalendar() {
+    const monthYearLabel = document.getElementById('calendar_month_year');
+    if (monthYearLabel) {
+      monthYearLabel.innerText = MONTH_NAMES[CALENDAR_MONTH] + " " + CALENDAR_YEAR;
+    }
+
+    const grid = document.getElementById('calendar_grid');
+    if (!grid) return;
+
+    let firstDay = new Date(CALENDAR_YEAR, CALENDAR_MONTH, 1);
+    let dayOfWeek = firstDay.getDay(); // 0 = Sun, 1 = Mon, ...
+    let paddingCells = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
+
+    let totalDays = new Date(CALENDAR_YEAR, CALENDAR_MONTH + 1, 0).getDate();
+
+    let dailyQtyMap = {};
+    FILTERED_DATA.forEach(row => {
+      if (!row['Date']) return;
+      let dateStr = row['Date'];
+      let parts = dateStr.split('-');
+      if (parts.length === 3) {
+        let y = parseInt(parts[0]);
+        let m = parseInt(parts[1]) - 1;
+        if (y === CALENDAR_YEAR && m === CALENDAR_MONTH) {
+          let d = parseInt(parts[2]);
+          let qty = Number(row['Quantity']) || Number(row['Qty']) || 0;
+          dailyQtyMap[d] = (dailyQtyMap[d] || 0) + qty;
+        }
+      }
+    });
+
+    let html = '';
+    for (let i = 0; i < paddingCells; i++) {
+      html += '<div class="calendar-day empty"></div>';
+    }
+
+    for (let day = 1; day <= totalDays; day++) {
+      let dateStr = CALENDAR_YEAR + '-' + String(CALENDAR_MONTH + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+      let hasData = dailyQtyMap[day] !== undefined && dailyQtyMap[day] > 0;
+      let isSelected = (dateStr === CALENDAR_SELECTED_DATE);
+
+      let cellClass = 'calendar-day';
+      if (isSelected) cellClass += ' selected';
+
+      let circleClass = 'day-circle';
+      if (hasData) circleClass += ' has-data';
+
+      let qtyHtml = hasData ? `<span class="day-qty">${dailyQtyMap[day]}</span>` : '';
+
+      html += `
+        <div class="${cellClass}" onclick="selectCalendarDate('${dateStr}')">
+          <div class="${circleClass}">
+            <span class="day-number">${day}</span>
+            ${qtyHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    grid.innerHTML = html;
+  }
+
+  function changeCalendarMonth(offset) {
+    CALENDAR_MONTH += offset;
+    if (CALENDAR_MONTH < 0) {
+      CALENDAR_MONTH = 11;
+      CALENDAR_YEAR -= 1;
+    } else if (CALENDAR_MONTH > 11) {
+      CALENDAR_MONTH = 0;
+      CALENDAR_YEAR += 1;
+    }
+    renderCalendar();
+  }
+
+  function selectCalendarDate(dateStr) {
+    CALENDAR_SELECTED_DATE = dateStr;
+    const dateLabel = document.getElementById('calendar_details_date');
+    if (dateLabel) {
+      dateLabel.innerText = formatCalendarDetailDate(dateStr);
+    }
+    renderCalendar();
+    renderCalendarDayDetails(dateStr);
+  }
+
+  function formatCalendarDetailDate(dateStr) {
+    if (!dateStr) return '';
+    let parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    let y = parseInt(parts[0]);
+    let m = parseInt(parts[1]) - 1;
+    let d = parseInt(parts[2]);
+    const shortMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return shortMonths[m] + ' ' + d + ', ' + y;
+  }
+
+  function renderCalendarDayDetails(dateStr) {
+    const listContainer = document.getElementById('calendar_details_list');
+    if (!listContainer) return;
+
+    let dayTransactions = FILTERED_DATA.filter(row => row['Date'] === dateStr);
+    
+    if (dayTransactions.length === 0) {
+      listContainer.innerHTML = `
+        <div style="padding: 20px; text-align: center; color: #aaaaaa; font-size: 13px;">
+          No transactions recorded for this day.
+        </div>
+      `;
+      return;
+    }
+
+    let html = '';
+    dayTransactions.forEach(row => {
+      let nameVal = row['Member'] || 'Unknown';
+      let groupName = row['Group'] || 'Unknown';
+      let typeName = row['Type'] || 'Cheki';
+      let locationName = row['Location'] || 'Bangkok';
+      let qty = Number(row['Quantity']) || Number(row['Qty']) || 1;
+      let thumbUrl = row['IMG'] || '';
+
+      let primaryColor = '#8ab4f8';
+      let imgUrl = '';
+      if (METADATA && METADATA.members) {
+        let memberMeta = METADATA.members.find(m => m.member_name === nameVal && (m.is_active === 'TRUE' || m.is_active === true));
+        if (!memberMeta) {
+          memberMeta = METADATA.members.find(m => m.member_name === nameVal);
+        }
+        if (memberMeta) {
+          imgUrl = (memberMeta.member_image && memberMeta.member_image !== 'None') ? memberMeta.member_image : '';
+          if (memberMeta.color) {
+            let match = COLOR_MAP[String(memberMeta.color).trim()];
+            if (match) primaryColor = match.primary;
+          } else {
+            primaryColor = getMemberColorCode(nameVal) || '#8ab4f8';
+          }
+        }
+      }
+
+      let avatarHtml = '';
+      if (imgUrl) {
+        avatarHtml = `<img src="${imgUrl}" class="calendar-detail-avatar" style="border: 2px solid ${primaryColor};" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />`;
+      }
+      let initial = nameVal ? nameVal.charAt(0).toUpperCase() : '?';
+      let fallbackHtml = `<div class="calendar-detail-avatar-placeholder" style="border: 2px solid ${primaryColor}; background-color: ${primaryColor}; display: ${imgUrl ? 'none' : 'flex'};">${initial}</div>`;
+      let avatarWrapperHtml = `<div class="calendar-detail-avatar-wrapper">${avatarHtml}${fallbackHtml}</div>`;
+
+      let typeTag = typeName ? `<span class="calendar-detail-badge">${typeName}</span>` : '';
+      let subtext = groupName + ' • ' + locationName;
+
+      let thumbHtml = '';
+      if (thumbUrl && (String(thumbUrl).startsWith('http://') || String(thumbUrl).startsWith('https://'))) {
+        thumbHtml = `<img src="${thumbUrl}" class="calendar-detail-thumb" onclick="window.open('${thumbUrl}', '_blank')" style="cursor: pointer;" />`;
+      }
+
+      html += `
+        <div class="calendar-detail-item">
+          ${avatarWrapperHtml}
+          <div class="calendar-detail-content">
+            <div class="calendar-detail-name-row">
+              <span class="calendar-detail-name" style="color: ${primaryColor};">${nameVal}</span>
+              ${typeTag}
+            </div>
+            <div class="calendar-detail-subtext">${subtext}</div>
+          </div>
+          ${thumbHtml}
+          <span class="calendar-detail-qty">x${qty}</span>
+        </div>
+      `;
+    });
+
+    listContainer.innerHTML = html;
   }
 
   function switchTab(evt, tabId) {
