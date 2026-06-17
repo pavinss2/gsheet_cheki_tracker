@@ -806,6 +806,11 @@
         barColor = 'rgb(' + Math.round(26 + 112 * ratio) + ',' + Math.round(54 + 126 * ratio) + ',' + Math.round(93 + 155 * ratio) + ')';
       }
       
+      let labelName = nameVal;
+      if (viewKey === 'MEMBER') {
+        labelName = nameVal.replace(/\s*\(.*?\)\s*/g, '').trim();
+      }
+      
       let printableValue = metricKey === 'qty' ? rawVal.toLocaleString() : rawVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       if (metricKey === 'price') printableValue += '<span class="chart-unit"> THB</span>';
       
@@ -837,7 +842,7 @@
           avatarHtml = `<img src="${imgUrl}" class="chart-member-avatar" style="border: ${borderWidth} solid ${borderColor};" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />`;
         }
         
-        let initial = nameVal ? nameVal.charAt(0).toUpperCase() : '?';
+        let initial = labelName ? labelName.charAt(0).toUpperCase() : '?';
         let fallbackBg = (memberMeta && memberMeta.color) ? memberMeta.color : '#444444';
         let fallbackHtml = `<div class="chart-member-avatar-placeholder" style="border: ${borderWidth} solid ${borderColor}; background-color: ${fallbackBg}; display: ${imgUrl ? 'none' : 'flex'};">${initial}</div>`;
         
@@ -848,7 +853,7 @@
         <div class="chart-rank">#${rank}</div>
         <div class="chart-trophy">${trophyHtml}</div>
         ${avatarWrapperHtml}
-        <div class="chart-name">${nameVal}</div>
+        <div class="chart-name">${labelName}</div>
         <div class="chart-bar-container">
           <div class="chart-bar-outer">
             <div class="chart-bar-inner" style="width: 0%; background-color: ${barColor};" data-width="${widthPct}"></div>
