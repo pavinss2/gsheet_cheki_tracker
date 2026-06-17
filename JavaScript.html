@@ -52,9 +52,7 @@
   let TIMELINE_BREAKDOWN = 'CONTEXT'; 
   let TIMELINE_CALC_MODE = 'CUMULATIVE';
   
-  let PIVOT_MODES = { MEMBER: 'GRAPH', GROUP: 'GRAPH', COLOR: 'GRAPH' };
-  let METRIC_SELECTIONS = { MEMBER: 'qty', GROUP: 'qty', COLOR: 'qty' };
-  let HEATMAP_TOP_N = { MEMBER: 20, GROUP: 20, COLOR: 20 };
+  let ANALYTICS_METRIC = 'qty';
 
   // Combined Analytics tab state variables
   let ANALYTICS_DIMENSION = 'MEMBER';
@@ -276,26 +274,54 @@
     statusDiv.style.display = 'flex';
   }
 
-  function createTop3ListHTML(frequencyMap, globalTotal, isMemberCard = false) {
-    let sortedItems = Object.keys(frequencyMap).map(key => {
+  function createProfessionalListHTML(frequencyMap, globalTotal, isMemberCard = false) {
+    let items = Object.keys(frequencyMap).map(key => {
       return { name: key, value: frequencyMap[key] };
-    }).sort((a, b) => b.value - a.value);
-
-    if (sortedItems.length === 0) return "No records found";
-    let top3 = sortedItems.slice(0, 3);
-    let html = "<ol>";
-    top3.forEach(item => {
-      let pct = globalTotal > 0 ? ((item.value / globalTotal) * 100).toFixed(1) : '0.0';
-      let displayVal = item.value.toLocaleString();
-      let inlineColorStyle = isMemberCard ? `style="color: ${getMemberColorCode(item.name)}; font-weight: bold;"` : "";
-      html += `<li><strong ${inlineColorStyle}>${item.name}</strong>: ${displayVal} (${pct}%)</li>`;
     });
-    return html + "</ol>";
+    // Remove "Unknown" values from showing in top 3 rankings
+    let filteredItems = items.filter(item => item.name !== 'Unknown');
+    let sortedItems = filteredItems.sort((a, b) => b.value - a.value);
+
+    if (sortedItems.length === 0) return "<div style='color:#777; font-size:12px; padding:5px;'>No data available</div>";
+    let top3 = sortedItems.slice(0, 3);
+    let html = "<div class='professional-top-list'>";
+    top3.forEach((item, idx) => {
+      let rank = idx + 1;
+      let pct = globalTotal > 0 ? ((item.value / globalTotal) * 100).toFixed(1) : '0.0';
+      let displayVal = item.value.toLocaleString() + ' pcs';
+      
+      let rankColor = '';
+      if (rank === 1) rankColor = '#ffd700';      // Gold
+      else if (rank === 2) rankColor = '#c0c0c0'; // Silver
+      else rankColor = '#cd7f32';                 // Bronze
+
+      let nameStyle = '';
+      if (isMemberCard) {
+        nameStyle = `style="color: ${getMemberColorCode(item.name)}; font-weight: 600;"`;
+      } else {
+        nameStyle = `style="color: #ffffff; font-weight: 500;"`;
+      }
+
+      html += `
+        <div class="pro-list-item">
+          <div class="pro-list-meta">
+            <span class="pro-rank-badge" style="background-color: ${rankColor}22; color: ${rankColor}; border: 1px solid ${rankColor}44;">${rank}</span>
+            <span class="pro-item-name" ${nameStyle}>${item.name}</span>
+            <span class="pro-item-val">${displayVal} <span class="pro-item-pct">(${pct}%)</span></span>
+          </div>
+          <div class="pro-progress-bar">
+            <div class="pro-progress-bar-fill" style="width: ${pct}%; background-color: ${isMemberCard ? getMemberColorCode(item.name) : '#bb86fc'};"></div>
+          </div>
+        </div>
+      `;
+    });
+    return html + "</div>";
   }
 
   function calculateGlobalKPIs() {
     TOTAL_QTY_GLOBAL = 0; TOTAL_PRICE_GLOBAL = 0;
     let memberMap = {}, groupMap = {}, colorMap = {}, companyMap = {};
+    let typeMap = {}, locationMap = {}, dateMap = {};
 
     for (let i = 0; i < FILTERED_DATA.length; i++) {
       let row = FILTERED_DATA[i];
@@ -305,26 +331,67 @@
       let g = row['Group'] || 'Unknown';
       let c = row['Color'] || 'Unknown';
       let comp = row['Company'] || 'Unknown';
+      let t = row['Type'] || 'Unknown';
+      let l = row['Location'] || 'Unknown';
+      let d = row['Date'] || '';
 
       TOTAL_QTY_GLOBAL += q; TOTAL_PRICE_GLOBAL += p;
       if (row['Member']) memberMap[m] = (memberMap[m] || 0) + q;
       if (row['Group']) groupMap[g] = (groupMap[g] || 0) + q;
       if (row['Color']) colorMap[c] = (colorMap[c] || 0) + q;
       if (row['Company']) companyMap[comp] = (companyMap[comp] || 0) + q;
+      if (row['Type']) typeMap[t] = (typeMap[t] || 0) + q;
+      if (row['Location']) locationMap[l] = (locationMap[l] || 0) + q;
+      if (d) {
+        let normalizedDate = d;
+        if (d.includes('T')) {
+          normalizedDate = d.split('T')[0];
+        }
+        dateMap[normalizedDate] = (dateMap[normalizedDate] || 0) + q;
+      }
     }
 
     document.getElementById('kpi_total_qty').innerText = TOTAL_QTY_GLOBAL.toLocaleString();
     document.getElementById('kpi_total_qty_subtext').innerText = '฿ ' + TOTAL_PRICE_GLOBAL.toLocaleString();
     document.getElementById('kpi_unique_members').innerText = Object.keys(memberMap).filter(k => k !== 'Unknown').length.toLocaleString();
     document.getElementById('kpi_unique_groups').innerText = Object.keys(groupMap).filter(k => k !== 'Unknown').length.toLocaleString();
-    document.getElementById('kpi_top_members').innerHTML = createTop3ListHTML(memberMap, TOTAL_QTY_GLOBAL, true);
-    document.getElementById('kpi_top_groups').innerHTML = createTop3ListHTML(groupMap, TOTAL_QTY_GLOBAL, false);
+    
+    document.getElementById('kpi_top_members').innerHTML = createProfessionalListHTML(memberMap, TOTAL_QTY_GLOBAL, true);
+    document.getElementById('kpi_top_groups').innerHTML = createProfessionalListHTML(groupMap, TOTAL_QTY_GLOBAL, false);
     
     let colorsKPI = document.getElementById('kpi_top_colors');
-    if (colorsKPI) colorsKPI.innerHTML = createTop3ListHTML(colorMap, TOTAL_QTY_GLOBAL, false);
+    if (colorsKPI) colorsKPI.innerHTML = createProfessionalListHTML(colorMap, TOTAL_QTY_GLOBAL, false);
 
     let companiesKPI = document.getElementById('kpi_top_companies');
-    if (companiesKPI) companiesKPI.innerHTML = createTop3ListHTML(companyMap, TOTAL_QTY_GLOBAL, false);
+    if (companiesKPI) companiesKPI.innerHTML = createProfessionalListHTML(companyMap, TOTAL_QTY_GLOBAL, false);
+
+    let typesKPI = document.getElementById('kpi_top_types');
+    if (typesKPI) typesKPI.innerHTML = createProfessionalListHTML(typeMap, TOTAL_QTY_GLOBAL, false);
+
+    let locationsKPI = document.getElementById('kpi_top_locations');
+    if (locationsKPI) locationsKPI.innerHTML = createProfessionalListHTML(locationMap, TOTAL_QTY_GLOBAL, false);
+
+    // Calculate maximum single day cheki volume
+    let maxDate = '-';
+    let maxQty = 0;
+    for (let dateKey in dateMap) {
+      if (dateMap[dateKey] > maxQty) {
+        maxQty = dateMap[dateKey];
+        maxDate = dateKey;
+      }
+    }
+
+    let mostChekiDayEl = document.getElementById('kpi_most_cheki_day');
+    let mostChekiDaySubEl = document.getElementById('kpi_most_cheki_day_subtext');
+    if (mostChekiDayEl && mostChekiDaySubEl) {
+      if (maxQty > 0) {
+        mostChekiDayEl.innerText = maxQty.toLocaleString() + ' pcs';
+        mostChekiDaySubEl.innerText = 'on ' + maxDate;
+      } else {
+        mostChekiDayEl.innerText = '0 pcs';
+        mostChekiDaySubEl.innerText = '-';
+      }
+    }
   }
 
   function renderAllViews() {
@@ -633,14 +700,15 @@
     container.innerHTML = buf.join('');
   }
 
-  function changePivotMetric(viewKey, metric) {
-    METRIC_SELECTIONS[viewKey] = metric;
-    let lower = viewKey.toLowerCase();
-    if(document.getElementById(lower + '_gr_qty')) {
-      document.getElementById(lower + '_gr_qty').classList.toggle('active', metric === 'qty');
-      document.getElementById(lower + '_gr_price').classList.toggle('active', metric === 'price');
+  function changeAnalyticsMetric(metric) {
+    ANALYTICS_METRIC = metric;
+    let qtyBtn = document.getElementById('analytics_metric_qty');
+    let priceBtn = document.getElementById('analytics_metric_price');
+    if (qtyBtn && priceBtn) {
+      qtyBtn.classList.toggle('active', metric === 'qty');
+      priceBtn.classList.toggle('active', metric === 'price');
     }
-    drawDimensionBarGraph(viewKey);
+    renderAllViews();
   }
 
   function drawDimensionBarGraph(viewKey) {
@@ -648,7 +716,7 @@
     let element = document.getElementById(containerId);
     if (!element) return;
 
-    let metricKey = METRIC_SELECTIONS[viewKey];
+    let metricKey = ANALYTICS_METRIC;
     let dataList = viewKey === 'MEMBER' ? [...MEMBER_P_ARRAY] : (viewKey === 'GROUP' ? [...GROUP_P_ARRAY] : [...COLOR_P_ARRAY]);
 
     if (dataList.length === 0) { 

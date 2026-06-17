@@ -61,46 +61,88 @@
   <div id="home_view_tab" class="tab-content active">
     <!-- Relocated KPI Cards + Two New Scorecards -->
     <div class="kpi-container">
-      <div class="kpi-card">
-        <div class="kpi-title">Total Cheki</div>
+      <div class="kpi-card accent-blue">
+        <div class="kpi-card-header">
+          <div class="kpi-title">Total Cheki</div>
+          <svg class="kpi-icon" viewBox="0 0 24 24" width="22" height="22"><path fill="none" d="M0 0h24v24H0z"/><path d="M4 5v14h16V5H4zm0-2h16c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2zm4 5h8v2H8V8zm0 4h8v2H8v-2z" fill="currentColor"/></svg>
+        </div>
         <div id="kpi_total_qty" class="kpi-value">0</div>
         <div id="kpi_total_qty_subtext" class="kpi-subtext">฿ 0</div>
       </div>
       <div class="kpi-card accent-purple">
-        <div class="kpi-title">Unique Idol Count</div>
+        <div class="kpi-card-header">
+          <div class="kpi-title">Unique Idol Count</div>
+          <svg class="kpi-icon" viewBox="0 0 24 24" width="22" height="22"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 14v8H4v-8h8zm-1-8l5 5H7l5-5zm6 8v8h-5v-8h5zm-6-2c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z" fill="currentColor"/></svg>
+        </div>
         <div style="margin-top: 8px;">
           <div class="kpi-dual-row"><span id="kpi_unique_members">0</span>&nbsp;Members</div>
           <div class="kpi-dual-row"><span id="kpi_unique_groups">0</span>&nbsp;Groups</div>
         </div>
       </div>
       <div class="kpi-card accent-green">
-        <div class="kpi-title">Top 3 Members</div>
+        <div class="kpi-card-header">
+          <div class="kpi-title">Top 3 Members</div>
+          <svg class="kpi-icon" viewBox="0 0 24 24" width="22" height="22"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/></svg>
+        </div>
         <div id="kpi_top_members" class="kpi-subtext">Calculating variables...</div>
       </div>
       <div class="kpi-card accent-orange">
-        <div class="kpi-title">Top 3 Groups</div>
+        <div class="kpi-card-header">
+          <div class="kpi-title">Top 3 Groups</div>
+          <svg class="kpi-icon" viewBox="0 0 24 24" width="22" height="22"><path fill="none" d="M0 0h24v24H0z"/><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 8 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/></svg>
+        </div>
         <div id="kpi_top_groups" class="kpi-subtext">Calculating variables...</div>
       </div>
       <div class="kpi-card accent-teal">
-        <div class="kpi-title">Top 3 Color</div>
+        <div class="kpi-card-header">
+          <div class="kpi-title">Top 3 Color</div>
+          <svg class="kpi-icon" viewBox="0 0 24 24" width="22" height="22"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.07 19.58 10.47 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" fill="currentColor"/></svg>
+        </div>
         <div id="kpi_top_colors" class="kpi-subtext">Calculating variables...</div>
       </div>
       <div class="kpi-card accent-pink">
-        <div class="kpi-title">Top 3 Company</div>
+        <div class="kpi-card-header">
+          <div class="kpi-title">Top 3 Company</div>
+          <svg class="kpi-icon" viewBox="0 0 24 24" width="22" height="22"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z" fill="currentColor"/></svg>
+        </div>
         <div id="kpi_top_companies" class="kpi-subtext">Calculating variables...</div>
+      </div>
+      <div class="kpi-card accent-cyan">
+        <div class="kpi-card-header">
+          <div class="kpi-title">Top Type</div>
+          <svg class="kpi-icon" viewBox="0 0 24 24" width="22" height="22"><path fill="none" d="M0 0h24v24H0z"/><path d="M12.89 3L4 14.89V21h6.11L19 9.11 12.89 3zm-2.78 16H6v-2.89L12.89 9.22l2.89 2.89L10.11 19z" fill="currentColor"/></svg>
+        </div>
+        <div id="kpi_top_types" class="kpi-subtext">Calculating variables...</div>
+      </div>
+      <div class="kpi-card accent-yellow">
+        <div class="kpi-card-header">
+          <div class="kpi-title">Top Location</div>
+          <svg class="kpi-icon" viewBox="0 0 24 24" width="22" height="22"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/></svg>
+        </div>
+        <div id="kpi_top_locations" class="kpi-subtext">Calculating variables...</div>
+      </div>
+      <div class="kpi-card accent-rose">
+        <div class="kpi-card-header">
+          <div class="kpi-title">Most Cheki in One Day</div>
+          <svg class="kpi-icon" viewBox="0 0 24 24" width="22" height="22"><path fill="none" d="M0 0h24v24H0z"/><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" fill="currentColor"/></svg>
+        </div>
+        <div id="kpi_most_cheki_day" class="kpi-value" style="font-size: 18px; margin-top: 8px;">0 pcs</div>
+        <div id="kpi_most_cheki_day_subtext" class="kpi-subtext">-</div>
       </div>
     </div>
 
     <!-- Home Timeline Section -->
-    <div class="view-header-actions" style="margin-top: 20px;">
-      <h4 style="margin: 0; color: #e0e0e0; font-size: 15px;">Quantity Trend over Time</h4>
-      <div class="graph-toggle" style="margin-left: auto; margin-bottom: 0;">
-        <button id="home_grain_daily" class="toggle-btn active" onclick="changeHomeTimelineGranularity('DAILY')">Daily</button>
-        <button id="home_grain_monthly" class="toggle-btn" onclick="changeHomeTimelineGranularity('MONTHLY')">Monthly</button>
-        <button id="home_grain_yearly" class="toggle-btn" onclick="changeHomeTimelineGranularity('YEARLY')">Yearly</button>
+    <div class="home-chart-card">
+      <div class="home-chart-header">
+        <h4 class="home-chart-title">Quantity Trend over Time</h4>
+        <div class="graph-toggle" style="margin-bottom: 0;">
+          <button id="home_grain_daily" class="toggle-btn active" onclick="changeHomeTimelineGranularity('DAILY')">Daily</button>
+          <button id="home_grain_monthly" class="toggle-btn" onclick="changeHomeTimelineGranularity('MONTHLY')">Monthly</button>
+          <button id="home_grain_yearly" class="toggle-btn" onclick="changeHomeTimelineGranularity('YEARLY')">Yearly</button>
+        </div>
       </div>
+      <div id="home_timeline_chart_div" class="chart-container-div" style="margin-top: 15px;"></div>
     </div>
-    <div id="home_timeline_chart_div" class="chart-container-div" style="margin-top: 10px;"></div>
   </div>
 
   <div id="raw_data_tab" class="tab-content">
@@ -181,16 +223,25 @@
   </div>
 
   <div id="analytics_tab" class="tab-content">
-    <div class="view-header-actions">
+    <div class="view-header-actions" style="margin-bottom: 8px;">
       <!-- Left side: Dimension switches -->
-      <div class="graph-toggle">
+      <div class="graph-toggle" style="margin-bottom: 0;">
         <button id="analytics_dim_member" class="toggle-btn active" onclick="changeAnalyticsDimension('MEMBER')">Member View</button>
         <button id="analytics_dim_group" class="toggle-btn" onclick="changeAnalyticsDimension('GROUP')">Group View</button>
         <button id="analytics_dim_color" class="toggle-btn" onclick="changeAnalyticsDimension('COLOR')">Color View</button>
       </div>
-      <!-- Right side: Mode switches -->
-      <div class="graph-toggle" style="margin-left: auto;">
-        <button id="analytics_mode_graph" class="toggle-btn active" onclick="changeAnalyticsMode('GRAPH')">Bar Graph</button>
+    </div>
+
+    <!-- Combined Metric and Mode Action Row -->
+    <div class="analytics-sub-header" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 12px; gap: 10px; flex-wrap: wrap;">
+      <!-- Left side: Metric toggles -->
+      <div id="analytics_metric_toggle_wrapper" class="graph-toggle" style="margin-bottom: 0;">
+        <button id="analytics_metric_qty" class="toggle-btn active" onclick="changeAnalyticsMetric('qty')">Quantity</button>
+        <button id="analytics_metric_price" class="toggle-btn" onclick="changeAnalyticsMetric('price')">Total (THB)</button>
+      </div>
+      <!-- Right side: Mode toggles -->
+      <div class="graph-toggle" style="margin-left: auto; margin-bottom: 0;">
+        <button id="analytics_mode_graph" class="toggle-btn active" onclick="changeAnalyticsMode('GRAPH')">Bar</button>
         <button id="analytics_mode_table" class="toggle-btn" onclick="changeAnalyticsMode('TABLE')">Table</button>
       </div>
     </div>
@@ -198,16 +249,12 @@
     <div id="member_metadata_placeholder"></div>
     <div id="group_metadata_placeholder"></div>
     
-    <div id="analytics_content_wrapper" style="margin-top: 15px;">
+    <div id="analytics_content_wrapper">
       <!-- Member Wrappers -->
       <div id="member_table_wrapper" class="table-wrapper" style="display:none;">
         <div id="member_table_container"></div>
       </div>
       <div id="member_graph_wrapper">
-        <div class="graph-toggle" style="margin-bottom:10px;">
-          <button id="member_gr_qty" class="toggle-btn active" onclick="changePivotMetric('MEMBER', 'qty')">Quantity</button>
-          <button id="member_gr_price" class="toggle-btn" onclick="changePivotMetric('MEMBER', 'price')">Total Price (THB)</button>
-        </div>
         <div id="member_chart_div" class="chart-container-div"></div>
       </div>
 
@@ -216,10 +263,6 @@
         <div id="group_table_container"></div>
       </div>
       <div id="group_graph_wrapper" style="display:none;">
-        <div class="graph-toggle" style="margin-bottom:10px;">
-          <button id="group_gr_qty" class="toggle-btn active" onclick="changePivotMetric('GROUP', 'qty')">Quantity</button>
-          <button id="group_gr_price" class="toggle-btn" onclick="changePivotMetric('GROUP', 'price')">Total Price (THB)</button>
-        </div>
         <div id="group_chart_div" class="chart-container-div"></div>
       </div>
 
@@ -228,10 +271,6 @@
         <div id="color_table_container"></div>
       </div>
       <div id="color_graph_wrapper" style="display:none;">
-        <div class="graph-toggle" style="margin-bottom:10px;">
-          <button id="color_gr_qty" class="toggle-btn active" onclick="changePivotMetric('COLOR', 'qty')">Quantity</button>
-          <button id="color_gr_price" class="toggle-btn" onclick="changePivotMetric('COLOR', 'price')">Total Price (THB)</button>
-        </div>
         <div id="color_chart_div" class="chart-container-div"></div>
       </div>
     </div>
