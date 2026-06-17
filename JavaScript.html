@@ -1194,13 +1194,13 @@
   function populateFormDropdowns() {
     if (!METADATA || !METADATA.members) return;
 
-    // Members dropdown from dim_member
-    const memberSelect = document.getElementById('form_member');
-    if (memberSelect) {
+    // Members datalist from dim_member
+    const memberDatalist = document.getElementById('form_member_datalist');
+    if (memberDatalist) {
       const uniqueMembers = [...new Set(METADATA.members.map(m => m.member_name))].sort();
-      memberSelect.innerHTML = '<option value="">-- Select Member --</option>' + 
-        uniqueMembers.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+      memberDatalist.innerHTML = uniqueMembers.map(m => '<option value="' + m + '">').join('');
     }
+    setupDatalistAutocomplete('form_member', 'form_member_datalist');
 
     // Types dropdown from dim_type
     const typeSelect = document.getElementById('form_type');
@@ -1975,13 +1975,13 @@
     }
 
     // 2. Populate Member Modal Groups
-    const groupSelect = document.getElementById('member_form_group');
-    if (groupSelect && METADATA.groups) {
+    const groupDatalist = document.getElementById('member_form_group_datalist');
+    if (groupDatalist && METADATA.groups) {
       const uniqueGroups = [...new Set(METADATA.groups.map(g => g.group))].sort();
-      groupSelect.innerHTML = '<option value="">-- Select Group --</option>' +
-        uniqueGroups.map(g => '<option value="' + g + '">' + g + '</option>').join('') +
-        '<option value="ADD_NEW_GROUP" style="font-weight: bold; color: #8ab4f8;">[+ Add New Group]</option>';
+      groupDatalist.innerHTML = uniqueGroups.map(g => '<option value="' + g + '">').join('') +
+        '<option value="ADD_NEW_GROUP">[+ Add New Group]</option>';
     }
+    setupDatalistAutocomplete('member_form_group', 'member_form_group_datalist');
 
     // 3. Populate Inline Group Countries and Group Modal Countries
     const countries = METADATA.countries || [];
@@ -2002,7 +2002,7 @@
     // 4. Populate Inline Group Companies and Group Modal Companies
     const companiesList = (METADATA.companies || []).map(c => c.company).filter(Boolean).sort();
     const inlineCompanySelect = document.getElementById('member_inline_group_company');
-    const groupCompanySelect = document.getElementById('group_form_company');
+    const groupCompanyDatalist = document.getElementById('group_form_company_datalist');
 
     const companyOptions = companiesList.map(c => '<option value="' + c + '">' + c + '</option>').join('') +
       '<option value="ADD_NEW_COMPANY" style="font-weight: bold; color: #8ab4f8;">[+ Add New Company]</option>';
@@ -2010,9 +2010,41 @@
     if (inlineCompanySelect) {
       inlineCompanySelect.innerHTML = '<option value="">-- Select Company --</option>' + companyOptions;
     }
-    if (groupCompanySelect) {
-      groupCompanySelect.innerHTML = '<option value="">-- Select Company --</option>' + companyOptions;
+    if (groupCompanyDatalist) {
+      groupCompanyDatalist.innerHTML = companiesList.map(c => '<option value="' + c + '">').join('') +
+        '<option value="ADD_NEW_COMPANY">[+ Add New Company]</option>';
     }
+    setupDatalistAutocomplete('group_form_company', 'group_form_company_datalist');
+  }
+
+  // ==========================================
+  // AUTOCOMPLETE UTILITY FOR DATALISTS
+  // ==========================================
+  function setupDatalistAutocomplete(inputId, datalistId) {
+    const inputEl = document.getElementById(inputId);
+    if (!inputEl) return;
+    
+    // Check initial state
+    if (inputEl.value.trim().length === 0) {
+      inputEl.removeAttribute('list');
+    } else {
+      inputEl.setAttribute('list', datalistId);
+    }
+    
+    // Remove list listener (avoid duplicate handlers by recreating the listener)
+    if (inputEl._autocompleteHandler) {
+      inputEl.removeEventListener('input', inputEl._autocompleteHandler);
+    }
+    
+    inputEl._autocompleteHandler = function() {
+      if (inputEl.value.trim().length >= 1) {
+        inputEl.setAttribute('list', datalistId);
+      } else {
+        inputEl.removeAttribute('list');
+      }
+    };
+    
+    inputEl.addEventListener('input', inputEl._autocompleteHandler);
   }
 
   // ==========================================

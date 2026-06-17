@@ -376,7 +376,8 @@
           <div class="form-grid">
             <div class="form-group">
               <label for="form_member">Member <span class="required">*</span></label>
-              <select id="form_member" required onchange="handleFormMemberChange()"></select>
+              <input type="text" id="form_member" list="form_member_datalist" required placeholder="Select or type member..." autocomplete="off" oninput="handleFormMemberChange()">
+              <datalist id="form_member_datalist"></datalist>
             </div>
             
             <div class="form-group">
@@ -489,7 +490,8 @@
             
             <div class="form-group">
               <label for="member_form_group">Group <span class="required">*</span></label>
-              <select id="member_form_group" required onchange="handleMemberFormGroupChange()"></select>
+              <input type="text" id="member_form_group" list="member_form_group_datalist" required placeholder="Select or type group..." autocomplete="off" oninput="handleMemberFormGroupChange()">
+              <datalist id="member_form_group_datalist"></datalist>
             </div>
           </div>
 
@@ -570,7 +572,8 @@
             
             <div class="form-group span-2">
               <label for="group_form_company">Company <span class="required">*</span></label>
-              <select id="group_form_company" required onchange="handleGroupFormCompanyChange()"></select>
+              <input type="text" id="group_form_company" list="group_form_company_datalist" required placeholder="Select or type company..." autocomplete="off" oninput="handleGroupFormCompanyChange()">
+              <datalist id="group_form_company_datalist"></datalist>
             </div>
 
             <!-- Inline New Company Field (Shown when Company is [+ Add New Company]) -->
