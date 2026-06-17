@@ -170,9 +170,9 @@
   <div id="member_view_tab" class="tab-content">
     <div class="view-header-actions">
       <div id="member_graph_toggle_wrapper" class="graph-toggle">
-        <button id="member_mode_table" class="toggle-btn active" onclick="togglePivotMode('MEMBER', 'TABLE')">Table</button>
+        <button id="member_mode_graph" class="toggle-btn active" onclick="togglePivotMode('MEMBER', 'GRAPH')">Bar Graph</button>
+        <button id="member_mode_table" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'TABLE')">Table</button>
         <button id="member_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'HEATMAP')">Heatmap</button>
-        <button id="member_mode_graph" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'GRAPH')">Bar Graph</button>
         <button id="member_mode_timeline" class="toggle-btn" onclick="togglePivotMode('MEMBER', 'TIMELINE')">Timeline</button>
       </div>
       <div style="margin-left: auto;">
@@ -183,7 +183,7 @@
     <div id="member_metadata_placeholder"></div>
     
     <div id="member_content_wrapper">
-      <div id="member_table_wrapper" class="table-wrapper">
+      <div id="member_table_wrapper" class="table-wrapper" style="display:none;">
         <div id="member_table_container"></div>
       </div>
       
@@ -199,7 +199,7 @@
         <div id="member_heatmap_container" class="heatmap-container"></div>
       </div>
       
-      <div id="member_graph_wrapper" style="display:none;">
+      <div id="member_graph_wrapper">
         <div class="graph-toggle" style="margin-bottom:10px;">
           <button id="member_gr_qty" class="toggle-btn active" onclick="changePivotMetric('MEMBER', 'qty')">Quantity</button>
           <button id="member_gr_price" class="toggle-btn" onclick="changePivotMetric('MEMBER', 'price')">Total Price (THB)</button>
@@ -216,9 +216,9 @@
   <div id="group_view_tab" class="tab-content">
     <div class="view-header-actions">
       <div id="group_graph_toggle_wrapper" class="graph-toggle">
-        <button id="group_mode_table" class="toggle-btn active" onclick="togglePivotMode('GROUP', 'TABLE')">Table</button>
+        <button id="group_mode_graph" class="toggle-btn active" onclick="togglePivotMode('GROUP', 'GRAPH')">Bar Graph</button>
+        <button id="group_mode_table" class="toggle-btn" onclick="togglePivotMode('GROUP', 'TABLE')">Table</button>
         <button id="group_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('GROUP', 'HEATMAP')">Heatmap</button>
-        <button id="group_mode_graph" class="toggle-btn" onclick="togglePivotMode('GROUP', 'GRAPH')">Bar Graph</button>
         <button id="group_mode_timeline" class="toggle-btn" onclick="togglePivotMode('GROUP', 'TIMELINE')">Timeline</button>
       </div>
       <div style="margin-left: auto;">
@@ -229,7 +229,7 @@
     <div id="group_metadata_placeholder"></div>
     
     <div id="group_content_wrapper">
-      <div id="group_table_wrapper" class="table-wrapper">
+      <div id="group_table_wrapper" class="table-wrapper" style="display:none;">
         <div id="group_table_container"></div>
       </div>
       
@@ -245,7 +245,7 @@
         <div id="group_heatmap_container" class="heatmap-container"></div>
       </div>
       
-      <div id="group_graph_wrapper" style="display:none;">
+      <div id="group_graph_wrapper">
         <div class="graph-toggle" style="margin-bottom:10px;">
           <button id="group_gr_qty" class="toggle-btn active" onclick="changePivotMetric('GROUP', 'qty')">Quantity</button>
           <button id="group_gr_price" class="toggle-btn" onclick="changePivotMetric('GROUP', 'price')">Total Price (THB)</button>
@@ -262,14 +262,14 @@
   <div id="color_view_tab" class="tab-content">
     <div class="view-header-actions">
       <div class="graph-toggle">
-        <button id="color_mode_table" class="toggle-btn active" onclick="togglePivotMode('COLOR', 'TABLE')">Table</button>
+        <button id="color_mode_graph" class="toggle-btn active" onclick="togglePivotMode('COLOR', 'GRAPH')">Bar Graph</button>
+        <button id="color_mode_table" class="toggle-btn" onclick="togglePivotMode('COLOR', 'TABLE')">Table</button>
         <button id="color_mode_heatmap" class="toggle-btn" onclick="togglePivotMode('COLOR', 'HEATMAP')">Heatmap</button>
-        <button id="color_mode_graph" class="toggle-btn" onclick="togglePivotMode('COLOR', 'GRAPH')">Bar Graph</button>
         <button id="color_mode_timeline" class="toggle-btn" onclick="togglePivotMode('COLOR', 'TIMELINE')">Timeline</button>
       </div>
     </div>
     
-    <div id="color_table_wrapper" class="table-wrapper">
+    <div id="color_table_wrapper" class="table-wrapper" style="display:none;">
       <div id="color_table_container"></div>
     </div>
     
@@ -285,7 +285,7 @@
       <div id="color_heatmap_container" class="heatmap-container"></div>
     </div>
     
-    <div id="color_graph_wrapper" style="display:none;">
+    <div id="color_graph_wrapper">
       <div class="graph-toggle" style="margin-bottom:10px;">
         <button id="color_gr_qty" class="toggle-btn active" onclick="changePivotMetric('COLOR', 'qty')">Quantity</button>
         <button id="color_gr_price" class="toggle-btn" onclick="changePivotMetric('COLOR', 'price')">Total Price (THB)</button>
