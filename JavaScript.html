@@ -2230,4 +2230,32 @@
       runner.addGroupMetadata(groupData);
     }
   }
+
+  // Dynamic click event listener for KPI Card breakdown tooltips
+  document.addEventListener('click', function(e) {
+    let card = e.target.closest('.kpi-card');
+    let insideTooltip = e.target.closest('.kpi-tooltip');
+    
+    if (card && !insideTooltip) {
+      let tooltip = card.querySelector('.kpi-tooltip');
+      if (tooltip) {
+        let wasActive = card.classList.contains('active-tooltip');
+        closeAllKPITooltips();
+        if (!wasActive) {
+          card.classList.add('active-tooltip');
+        }
+        return;
+      }
+    }
+    
+    if (!insideTooltip) {
+      closeAllKPITooltips();
+    }
+  });
+
+  function closeAllKPITooltips() {
+    document.querySelectorAll('.kpi-card.active-tooltip').forEach(c => {
+      c.classList.remove('active-tooltip');
+    });
+  }
 </script>
