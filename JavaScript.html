@@ -328,7 +328,49 @@
         </div>
       `;
     });
-    return html + "</div>";
+    html += "</div>";
+
+    // Add Hover Breakdown Tooltip if unique values count > 3
+    if (sortedItems.length > 3) {
+      let top20 = sortedItems.slice(0, 20);
+      let tooltipHtml = `
+        <div class="kpi-tooltip">
+          <div class="kpi-tooltip-header">
+            <span>Breakdown (Top 20)</span>
+            <span class="kpi-tooltip-count">${sortedItems.length} Items</span>
+          </div>
+          <div class="kpi-tooltip-list">
+      `;
+      top20.forEach((item, idx) => {
+        let rank = idx + 1;
+        let pct = globalTotal > 0 ? ((item.value / globalTotal) * 100).toFixed(1) : '0.0';
+        
+        let itemColor = '#ffffff';
+        if (cardType === 'MEMBER') {
+          itemColor = getMemberColorCode(item.name);
+        } else if (cardType === 'COLOR') {
+          itemColor = getColorHexCode(item.name);
+          if (item.name === 'White') itemColor = '#f4f4f5';
+        }
+        
+        let nameStyle = `style="color: ${itemColor}; font-weight: 500;"`;
+
+        tooltipHtml += `
+          <div class="kpi-tooltip-row">
+            <span class="tooltip-row-rank">${rank}</span>
+            <span class="tooltip-row-name" ${nameStyle}>${item.name}</span>
+            <span class="tooltip-row-val">${item.value.toLocaleString()} <span class="tooltip-row-pct">(${pct}%)</span></span>
+          </div>
+        `;
+      });
+      tooltipHtml += `
+          </div>
+        </div>
+      `;
+      html += tooltipHtml;
+    }
+
+    return html;
   }
 
   function calculateGlobalKPIs() {

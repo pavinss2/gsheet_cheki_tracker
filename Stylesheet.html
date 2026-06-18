@@ -8,6 +8,7 @@
     gap: 12px;
     margin-bottom: 20px;
     margin-top: 10px;
+    padding: 0 4px;
   }
   .app-logo {
     width: 32px;
@@ -186,7 +187,7 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    font-size: 11.5px;
+    font-size: 13px;
   }
   .pro-rank-badge {
     display: inline-flex;
@@ -209,12 +210,12 @@
   .pro-item-val {
     color: #ffffff;
     font-weight: 600;
-    font-size: 12px;
+    font-size: 13px;
     flex-shrink: 0;
   }
   .pro-item-pct {
     color: #71717a;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 400;
   }
   .pro-progress-bar {
@@ -231,7 +232,7 @@
   }
 
   /* Control Panel Box Grid Setup */
-  .filter-panel { background: #1e1e1e; padding: 15px 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  .filter-panel { background: #1e1e1e; padding: 15px 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
   .filter-group { display: flex; flex-direction: column; min-width: 120px; flex: 1; }
   .filter-group label { font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #aaaaaa; text-transform: uppercase; }
   .filter-group select, .filter-group input { padding: 8px; border: 1px solid #333333; border-radius: 4px; font-size: 13px; outline: none; background: #2d2d2d; color: #ffffff; width: 100%; box-sizing: border-box; }
@@ -247,7 +248,7 @@
     display: flex;
     background: #09090b;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 4px;
+    padding: 4px 2px;
     border-radius: 30px;
     width: 100%;
     max-width: 500px;
@@ -280,7 +281,7 @@
     color: #09090b;
     box-shadow: 0 2px 8px rgba(161, 161, 170, 0.2);
   }
-  .tab-content { display: none; background: #1e1e1e; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .tab-content { display: none; background: #1e1e1e; padding: 15px 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
   .tab-content.active { display: block; }
   
   /* Structural Grids Data Output Layout */
@@ -450,22 +451,25 @@
   }
 
   @media (max-width: 600px) {
-    body { margin: 10px; }
+    body { margin: 8px; }
     h1 { font-size: 20px; margin-bottom: 15px; }
+    .app-header-container { padding: 0 2px; }
     
     /* Force exactly 3 filter elements per row (making 6 fit perfectly in exactly 2 rows) */
-    .filter-panel { padding: 12px; gap: 8px; display: flex; flex-wrap: wrap; }
+    .filter-panel { padding: 10px 6px; gap: 8px; display: flex; flex-wrap: wrap; }
     .filter-group { flex: none; width: calc(33.333% - 6px); min-width: 0; }
     .filter-group label { font-size: 9px; margin-bottom: 3px; }
     .filter-group select { padding: 6px 4px; font-size: 11px; }
+
+    .tab-content { padding: 12px 6px; }
 
     .kpi-container { grid-template-columns: repeat(2, 1fr); gap: 4px; }
     .kpi-card { padding: 8px; }
     .kpi-card-header { margin-bottom: 6px; }
     .professional-top-list { gap: 7px; margin-top: 4px; }
     .pro-list-item { gap: 4px; }
-    .pro-list-meta { gap: 4px; font-size: 10.5px; }
-    .pro-item-val { font-size: 10.5px; }
+    .pro-list-meta { gap: 4px; font-size: 11.5px; }
+    .pro-item-val { font-size: 11.5px; }
     .kpi-split-row { margin-top: 6px; }
     .kpi-split-divider { height: 20px; }
     .kpi-center-date { margin-top: 5px; }
@@ -910,6 +914,124 @@
     }
     .panel-header h3 {
       font-size: 14px;
+    }
+  }
+
+  /* KPI Card Hover Breakdown Tooltip Styles */
+  .kpi-card {
+    position: relative;
+  }
+  
+  .kpi-tooltip {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 8px;
+    background: #1f1f23;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.55);
+    z-index: 200;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    flex-direction: column;
+    pointer-events: auto;
+  }
+  
+  .kpi-card:hover .kpi-tooltip,
+  .kpi-card:focus-within .kpi-tooltip {
+    display: flex;
+  }
+  
+  .kpi-tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #a1a1aa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .kpi-tooltip-count {
+    color: #8ab4f8;
+    font-weight: 700;
+  }
+  
+  .kpi-tooltip-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+  
+  .kpi-tooltip-list::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .kpi-tooltip-list::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+  }
+  
+  .kpi-tooltip-row {
+    display: flex;
+    align-items: center;
+    font-size: 11.5px;
+    color: #e4e4e7;
+    gap: 6px;
+  }
+  
+  .tooltip-row-rank {
+    font-size: 9px;
+    font-weight: 800;
+    color: #a1a1aa;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .tooltip-row-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+  }
+  
+  .tooltip-row-val {
+    font-weight: 600;
+    color: #ffffff;
+    flex-shrink: 0;
+  }
+  
+  .tooltip-row-pct {
+    color: #71717a;
+    font-size: 10px;
+    font-weight: 400;
+  }
+
+  @media (max-width: 600px) {
+    .kpi-tooltip {
+      position: absolute;
+      left: 0;
+      right: 0;
+      width: 100%;
     }
   }
 </style>
