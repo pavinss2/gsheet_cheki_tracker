@@ -336,7 +336,7 @@
       let tooltipHtml = `
         <div class="kpi-tooltip">
           <div class="kpi-tooltip-header">
-            <span>Breakdown (Top 20)</span>
+            <span>Top 20</span>
             <span class="kpi-tooltip-count">${sortedItems.length} Items</span>
           </div>
           <div class="kpi-tooltip-list">
@@ -455,10 +455,64 @@
         let daySpend = dateSpendMap[maxDate] || 0;
         if (mostChekiDaySpendEl) mostChekiDaySpendEl.innerText = '฿ ' + daySpend.toLocaleString();
         if (mostChekiDayDateEl) mostChekiDayDateEl.innerText = maxDate;
+
+        // Calculate breakdown of sum quantity grouped by member on that day
+        let dayMembers = {};
+        for (let i = 0; i < FILTERED_DATA.length; i++) {
+          let row = FILTERED_DATA[i];
+          let d = row['Date'] || '';
+          let normalizedDate = d;
+          if (d.includes('T')) {
+            normalizedDate = d.split('T')[0];
+          }
+          if (normalizedDate === maxDate && row['Member']) {
+            let m = row['Member'];
+            let q = parseInt(row['Qty']) || 0;
+            dayMembers[m] = (dayMembers[m] || 0) + q;
+          }
+        }
+
+        let sortedDayMembers = Object.keys(dayMembers).map(k => {
+          return { name: k, value: dayMembers[k] };
+        }).sort((a, b) => b.value - a.value);
+
+        let tooltipHtml = `
+          <div class="kpi-tooltip">
+            <div class="kpi-tooltip-header">
+              <span>Top Members</span>
+              <span class="kpi-tooltip-count">${sortedDayMembers.length} Members</span>
+            </div>
+            <div class="kpi-tooltip-list">
+        `;
+        sortedDayMembers.forEach((item, idx) => {
+          let rank = idx + 1;
+          let pct = maxQty > 0 ? ((item.value / maxQty) * 100).toFixed(1) : '0.0';
+          let memberColor = getMemberColorCode(item.name);
+          let nameStyle = `style="color: ${memberColor}; font-weight: 600;"`;
+          
+          tooltipHtml += `
+            <div class="kpi-tooltip-row">
+              <span class="tooltip-row-rank">${rank}</span>
+              <span class="tooltip-row-name" ${nameStyle}>${item.name}</span>
+              <span class="tooltip-row-val">${item.value.toLocaleString()} <span class="tooltip-row-pct">(${pct}%)</span></span>
+            </div>
+          `;
+        });
+        tooltipHtml += `
+            </div>
+          </div>
+        `;
+
+        let tooltipContainer = document.getElementById('kpi_most_cheki_day_tooltip_container');
+        if (tooltipContainer) {
+          tooltipContainer.innerHTML = tooltipHtml;
+        }
       } else {
         mostChekiDayEl.innerText = '0';
         if (mostChekiDaySpendEl) mostChekiDaySpendEl.innerText = '฿ 0';
         if (mostChekiDayDateEl) mostChekiDayDateEl.innerText = 'Date';
+        let tooltipContainer = document.getElementById('kpi_most_cheki_day_tooltip_container');
+        if (tooltipContainer) tooltipContainer.innerHTML = '';
       }
     }
   }
