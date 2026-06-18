@@ -404,9 +404,11 @@
       if (row['Location']) locationMap[l] = (locationMap[l] || 0) + q;
       if (nat) nationalityMap[nat] = (nationalityMap[nat] || 0) + q;
       if (d) {
-        let normalizedDate = d;
-        if (d.includes('T')) {
-          normalizedDate = d.split('T')[0];
+        let normalizedDate = String(d).trim();
+        if (normalizedDate.includes('T')) {
+          normalizedDate = normalizedDate.split('T')[0];
+        } else if (normalizedDate.includes(' ')) {
+          normalizedDate = normalizedDate.split(' ')[0];
         }
         dateMap[normalizedDate] = (dateMap[normalizedDate] || 0) + q;
         dateSpendMap[normalizedDate] = (dateSpendMap[normalizedDate] || 0) + p;
@@ -461,20 +463,24 @@
         for (let i = 0; i < FILTERED_DATA.length; i++) {
           let row = FILTERED_DATA[i];
           let d = row['Date'] || '';
-          let normalizedDate = d;
-          if (d.includes('T')) {
-            normalizedDate = d.split('T')[0];
+          let normalizedDate = String(d).trim();
+          if (normalizedDate.includes('T')) {
+            normalizedDate = normalizedDate.split('T')[0];
+          } else if (normalizedDate.includes(' ')) {
+            normalizedDate = normalizedDate.split(' ')[0];
           }
           if (normalizedDate === maxDate && row['Member']) {
             let m = row['Member'];
-            let q = parseInt(row['Qty']) || 0;
+            let q = Number(row['Quantity']) || Number(row['Qty']) || 0;
             dayMembers[m] = (dayMembers[m] || 0) + q;
           }
         }
 
-        let sortedDayMembers = Object.keys(dayMembers).map(k => {
-          return { name: k, value: dayMembers[k] };
-        }).sort((a, b) => b.value - a.value);
+        let sortedDayMembers = Object.keys(dayMembers)
+          .filter(k => k !== 'Unknown')
+          .map(k => {
+            return { name: k, value: dayMembers[k] };
+          }).sort((a, b) => b.value - a.value);
 
         let tooltipHtml = `
           <div class="kpi-tooltip">
