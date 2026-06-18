@@ -67,15 +67,54 @@
     transform: scale(1.1);
   }
   
-  .kpi-card.accent-blue { border-left-color: #3b82f6; }
-  .kpi-card.accent-purple { border-left-color: #a855f7; }
-  .kpi-card.accent-green { border-left-color: #10b981; }
-  .kpi-card.accent-orange { border-left-color: #f59e0b; }
-  .kpi-card.accent-teal { border-left-color: #14b8a6; }
-  .kpi-card.accent-pink { border-left-color: #ec4899; }
-  .kpi-card.accent-cyan { border-left-color: #06b6d4; }
-  .kpi-card.accent-yellow { border-left-color: #eab308; }
-  .kpi-card.accent-rose { border-left-color: #f43f5e; }
+  .kpi-card.accent-primary { border-left-color: #a1a1aa; }
+  .kpi-card.accent-neutral { border-left-color: #3f3f46; }
+
+  /* KPI Split Scorecard Layout Styles */
+  .kpi-split-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 15px;
+    gap: 10px;
+  }
+  .kpi-split-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .kpi-split-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.2;
+  }
+  .kpi-split-label {
+    font-size: 11px;
+    color: #a1a1aa;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+  .kpi-split-divider {
+    width: 1px;
+    height: 30px;
+    background-color: rgba(255, 255, 255, 0.1);
+    align-self: center;
+  }
+  .kpi-center-date {
+    text-align: center;
+    font-size: 11px;
+    color: #a1a1aa;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-top: 10px;
+    letter-spacing: 0.5px;
+    width: 100%;
+  }
 
   .kpi-title {
     font-size: 11px;
@@ -139,7 +178,7 @@
   .pro-list-item {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 7px;
     width: 100%;
   }
   .pro-list-meta {
@@ -147,7 +186,7 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    font-size: 12px;
+    font-size: 11.5px;
   }
   .pro-rank-badge {
     display: inline-flex;
@@ -175,7 +214,7 @@
   }
   .pro-item-pct {
     color: #71717a;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 400;
   }
   .pro-progress-bar {
@@ -204,10 +243,43 @@
   .clear-token-btn:hover { color: #f44336; }
 
   /* Layout Tab Controllers Navigation */
-  .tab-container { display: flex; border-bottom: 2px solid #333333; margin-bottom: 0px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .tab-button { background: none; border: none; padding: 12px 16px; font-size: 14px; cursor: pointer; color: #aaaaaa; font-weight: 500; border-bottom: 3px solid transparent; transition: all 0.15s; white-space: nowrap; flex: 1; text-align: center; }
-  .tab-button:hover { color: #8ab4f8; background-color: #252525; }
-  .tab-button.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
+  .tab-container {
+    display: flex;
+    background: #09090b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 4px;
+    border-radius: 30px;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto 15px auto;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    box-sizing: border-box;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tab-button {
+    background: transparent;
+    border: none;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 26px;
+    cursor: pointer;
+    color: #a1a1aa;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    flex: 1;
+    text-align: center;
+  }
+  .tab-button:hover {
+    color: #ffffff;
+    background: transparent;
+  }
+  .tab-button.active {
+    background: #a1a1aa;
+    color: #09090b;
+    box-shadow: 0 2px 8px rgba(161, 161, 170, 0.2);
+  }
   .tab-content { display: none; background: #1e1e1e; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
   .tab-content.active { display: block; }
   
@@ -258,9 +330,9 @@
     color: #ffffff;
   }
   .toggle-btn.active {
-    background: #bb86fc;
+    background: #a1a1aa;
     color: #09090b;
-    box-shadow: 0 2px 8px rgba(187, 134, 252, 0.35);
+    box-shadow: 0 2px 8px rgba(161, 161, 170, 0.2);
   }
   
   .chart-container-div { width: 100%; min-height: 400px; height: auto; margin-top: 15px; }
@@ -387,7 +459,16 @@
     .filter-group label { font-size: 9px; margin-bottom: 3px; }
     .filter-group select { padding: 6px 4px; font-size: 11px; }
 
-    .kpi-container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .kpi-container { grid-template-columns: repeat(2, 1fr); gap: 4px; }
+    .kpi-card { padding: 8px; }
+    .kpi-card-header { margin-bottom: 6px; }
+    .professional-top-list { gap: 7px; margin-top: 4px; }
+    .pro-list-item { gap: 4px; }
+    .pro-list-meta { gap: 4px; font-size: 10.5px; }
+    .pro-item-val { font-size: 10.5px; }
+    .kpi-split-row { margin-top: 6px; }
+    .kpi-split-divider { height: 20px; }
+    .kpi-center-date { margin-top: 5px; }
     .tab-button { padding: 10px 4px; font-size: 11px; }
     .chart-container-div, .heatmap-container { min-height: 320px; }
 

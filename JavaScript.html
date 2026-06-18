@@ -43,6 +43,13 @@
     return '#8ab4f8';
   }
 
+  function getColorHexCode(colorName) {
+    let norm = String(colorName).trim();
+    let match = COLOR_MAP[norm];
+    if (match) return match.primary;
+    return '#e4e4e7';
+  }
+
   let MEMBER_P_ARRAY = [];
   let GROUP_P_ARRAY = [];
   let COLOR_P_ARRAY = [];
@@ -274,7 +281,7 @@
     statusDiv.style.display = 'flex';
   }
 
-  function createProfessionalListHTML(frequencyMap, globalTotal, isMemberCard = false) {
+  function createProfessionalListHTML(frequencyMap, globalTotal, cardType = 'NEUTRAL') {
     let items = Object.keys(frequencyMap).map(key => {
       return { name: key, value: frequencyMap[key] };
     });
@@ -288,18 +295,24 @@
     top3.forEach((item, idx) => {
       let rank = idx + 1;
       let pct = globalTotal > 0 ? ((item.value / globalTotal) * 100).toFixed(1) : '0.0';
-      let displayVal = item.value.toLocaleString() + ' pcs';
+      let displayVal = item.value.toLocaleString() + ' (' + pct + '%)';
       
       let rankColor = '';
       if (rank === 1) rankColor = '#ffd700';      // Gold
       else if (rank === 2) rankColor = '#c0c0c0'; // Silver
       else rankColor = '#cd7f32';                 // Bronze
 
-      let nameStyle = '';
-      if (isMemberCard) {
-        nameStyle = `style="color: ${getMemberColorCode(item.name)}; font-weight: 600;"`;
-      } else {
-        nameStyle = `style="color: #ffffff; font-weight: 500;"`;
+      let itemColor = '#e4e4e7';
+      let nameStyle = `style="color: #ffffff; font-weight: 500;"`;
+
+      if (cardType === 'MEMBER') {
+        itemColor = getMemberColorCode(item.name);
+        nameStyle = `style="color: ${itemColor}; font-weight: 600;"`;
+      } else if (cardType === 'COLOR') {
+        itemColor = getColorHexCode(item.name);
+        let textCol = itemColor;
+        if (item.name === 'White') textCol = '#f4f4f5';
+        nameStyle = `style="color: ${textCol}; font-weight: 600;"`;
       }
 
       html += `
@@ -307,10 +320,10 @@
           <div class="pro-list-meta">
             <span class="pro-rank-badge" style="background-color: ${rankColor}22; color: ${rankColor}; border: 1px solid ${rankColor}44;">${rank}</span>
             <span class="pro-item-name" ${nameStyle}>${item.name}</span>
-            <span class="pro-item-val">${displayVal} <span class="pro-item-pct">(${pct}%)</span></span>
+            <span class="pro-item-val">${displayVal}</span>
           </div>
           <div class="pro-progress-bar">
-            <div class="pro-progress-bar-fill" style="width: ${pct}%; background-color: ${isMemberCard ? getMemberColorCode(item.name) : '#bb86fc'};"></div>
+            <div class="pro-progress-bar-fill" style="width: ${pct}%; background-color: ${itemColor};"></div>
           </div>
         </div>
       `;
@@ -321,7 +334,8 @@
   function calculateGlobalKPIs() {
     TOTAL_QTY_GLOBAL = 0; TOTAL_PRICE_GLOBAL = 0;
     let memberMap = {}, groupMap = {}, colorMap = {}, companyMap = {};
-    let typeMap = {}, locationMap = {}, dateMap = {};
+    let typeMap = {}, locationMap = {}, dateMap = {}, nationalityMap = {};
+    let dateSpendMap = {};
 
     for (let i = 0; i < FILTERED_DATA.length; i++) {
       let row = FILTERED_DATA[i];
@@ -331,23 +345,29 @@
       let g = row['Group'] || 'Unknown';
       let c = row['Color'] || 'Unknown';
       let comp = row['Company'] || 'Unknown';
+      if (comp === 'Individual') {
+        comp = row['Group'] || 'Unknown';
+      }
       let t = row['Type'] || 'Unknown';
       let l = row['Location'] || 'Unknown';
+      let nat = row['Nationality'] || 'Unknown';
       let d = row['Date'] || '';
 
       TOTAL_QTY_GLOBAL += q; TOTAL_PRICE_GLOBAL += p;
       if (row['Member']) memberMap[m] = (memberMap[m] || 0) + q;
       if (row['Group']) groupMap[g] = (groupMap[g] || 0) + q;
       if (row['Color']) colorMap[c] = (colorMap[c] || 0) + q;
-      if (row['Company']) companyMap[comp] = (companyMap[comp] || 0) + q;
+      if (comp) companyMap[comp] = (companyMap[comp] || 0) + q;
       if (row['Type']) typeMap[t] = (typeMap[t] || 0) + q;
       if (row['Location']) locationMap[l] = (locationMap[l] || 0) + q;
+      if (nat) nationalityMap[nat] = (nationalityMap[nat] || 0) + q;
       if (d) {
         let normalizedDate = d;
         if (d.includes('T')) {
           normalizedDate = d.split('T')[0];
         }
         dateMap[normalizedDate] = (dateMap[normalizedDate] || 0) + q;
+        dateSpendMap[normalizedDate] = (dateSpendMap[normalizedDate] || 0) + p;
       }
     }
 
@@ -356,20 +376,23 @@
     document.getElementById('kpi_unique_members').innerText = Object.keys(memberMap).filter(k => k !== 'Unknown').length.toLocaleString();
     document.getElementById('kpi_unique_groups').innerText = Object.keys(groupMap).filter(k => k !== 'Unknown').length.toLocaleString();
     
-    document.getElementById('kpi_top_members').innerHTML = createProfessionalListHTML(memberMap, TOTAL_QTY_GLOBAL, true);
-    document.getElementById('kpi_top_groups').innerHTML = createProfessionalListHTML(groupMap, TOTAL_QTY_GLOBAL, false);
+    document.getElementById('kpi_top_members').innerHTML = createProfessionalListHTML(memberMap, TOTAL_QTY_GLOBAL, 'MEMBER');
+    document.getElementById('kpi_top_groups').innerHTML = createProfessionalListHTML(groupMap, TOTAL_QTY_GLOBAL, 'GROUP');
     
     let colorsKPI = document.getElementById('kpi_top_colors');
-    if (colorsKPI) colorsKPI.innerHTML = createProfessionalListHTML(colorMap, TOTAL_QTY_GLOBAL, false);
+    if (colorsKPI) colorsKPI.innerHTML = createProfessionalListHTML(colorMap, TOTAL_QTY_GLOBAL, 'COLOR');
 
     let companiesKPI = document.getElementById('kpi_top_companies');
-    if (companiesKPI) companiesKPI.innerHTML = createProfessionalListHTML(companyMap, TOTAL_QTY_GLOBAL, false);
+    if (companiesKPI) companiesKPI.innerHTML = createProfessionalListHTML(companyMap, TOTAL_QTY_GLOBAL, 'COMPANY');
 
     let typesKPI = document.getElementById('kpi_top_types');
-    if (typesKPI) typesKPI.innerHTML = createProfessionalListHTML(typeMap, TOTAL_QTY_GLOBAL, false);
+    if (typesKPI) typesKPI.innerHTML = createProfessionalListHTML(typeMap, TOTAL_QTY_GLOBAL, 'TYPE');
 
     let locationsKPI = document.getElementById('kpi_top_locations');
-    if (locationsKPI) locationsKPI.innerHTML = createProfessionalListHTML(locationMap, TOTAL_QTY_GLOBAL, false);
+    if (locationsKPI) locationsKPI.innerHTML = createProfessionalListHTML(locationMap, TOTAL_QTY_GLOBAL, 'LOCATION');
+
+    let nationalitiesKPI = document.getElementById('kpi_top_nationalities');
+    if (nationalitiesKPI) nationalitiesKPI.innerHTML = createProfessionalListHTML(nationalityMap, TOTAL_QTY_GLOBAL, 'NATIONALITY');
 
     // Calculate maximum single day cheki volume
     let maxDate = '-';
@@ -382,14 +405,18 @@
     }
 
     let mostChekiDayEl = document.getElementById('kpi_most_cheki_day');
-    let mostChekiDaySubEl = document.getElementById('kpi_most_cheki_day_subtext');
-    if (mostChekiDayEl && mostChekiDaySubEl) {
+    let mostChekiDaySpendEl = document.getElementById('kpi_most_cheki_day_spend');
+    let mostChekiDayDateEl = document.getElementById('kpi_most_cheki_day_date');
+    if (mostChekiDayEl) {
       if (maxQty > 0) {
-        mostChekiDayEl.innerText = maxQty.toLocaleString() + ' pcs';
-        mostChekiDaySubEl.innerText = 'on ' + maxDate;
+        mostChekiDayEl.innerText = maxQty.toLocaleString();
+        let daySpend = dateSpendMap[maxDate] || 0;
+        if (mostChekiDaySpendEl) mostChekiDaySpendEl.innerText = '฿ ' + daySpend.toLocaleString();
+        if (mostChekiDayDateEl) mostChekiDayDateEl.innerText = maxDate;
       } else {
-        mostChekiDayEl.innerText = '0 pcs';
-        mostChekiDaySubEl.innerText = '-';
+        mostChekiDayEl.innerText = '0';
+        if (mostChekiDaySpendEl) mostChekiDaySpendEl.innerText = '฿ 0';
+        if (mostChekiDayDateEl) mostChekiDayDateEl.innerText = 'Date';
       }
     }
   }
@@ -929,7 +956,7 @@
         gridlines: { color: '#333333' }, 
         baselineColor: '#444444' 
       },
-      colors: ['#bb86fc'],
+      colors: ['#a1a1aa'],
       chartArea: { width: '85%', height: '70%' },
       legend: { position: 'none' },
       lineWidth: 3,
