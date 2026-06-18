@@ -458,8 +458,9 @@
         if (mostChekiDaySpendEl) mostChekiDaySpendEl.innerText = '฿ ' + daySpend.toLocaleString();
         if (mostChekiDayDateEl) mostChekiDayDateEl.innerText = maxDate;
 
-        // Calculate breakdown of sum quantity grouped by member on that day
+        // Calculate breakdown of sum quantity grouped by member on that day, and collect unique events
         let dayMembers = {};
+        let dayEvents = new Set();
         for (let i = 0; i < FILTERED_DATA.length; i++) {
           let row = FILTERED_DATA[i];
           let d = row['Date'] || '';
@@ -469,10 +470,16 @@
           } else if (normalizedDate.includes(' ')) {
             normalizedDate = normalizedDate.split(' ')[0];
           }
-          if (normalizedDate === maxDate && row['Member']) {
-            let m = row['Member'];
-            let q = Number(row['Quantity']) || Number(row['Qty']) || 0;
-            dayMembers[m] = (dayMembers[m] || 0) + q;
+          if (normalizedDate === maxDate) {
+            if (row['Member']) {
+              let m = row['Member'];
+              let q = Number(row['Quantity']) || Number(row['Qty']) || 0;
+              dayMembers[m] = (dayMembers[m] || 0) + q;
+            }
+            let ev = row['Event'] || '';
+            if (ev && ev !== 'Unknown' && ev.trim() !== '') {
+              dayEvents.add(ev.trim());
+            }
           }
         }
 
@@ -482,11 +489,18 @@
             return { name: k, value: dayMembers[k] };
           }).sort((a, b) => b.value - a.value);
 
+        let eventStr = Array.from(dayEvents).join(', ');
+        if (!eventStr) eventStr = 'N/A';
+
         let tooltipHtml = `
           <div class="kpi-tooltip">
             <div class="kpi-tooltip-header">
-              <span>Top Members</span>
+              <span>Most Cheki Day</span>
               <span class="kpi-tooltip-count">${sortedDayMembers.length} Members</span>
+            </div>
+            <div class="kpi-tooltip-event-info" style="font-size: 11px; color: #8ab4f8; margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.08); padding-bottom: 6px; text-align: left; font-weight: 500;">
+              <span style="color: #a1a1aa; text-transform: uppercase; font-weight: 600; font-size: 9px; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Event(s)</span>
+              ${eventStr}
             </div>
             <div class="kpi-tooltip-list">
         `;
