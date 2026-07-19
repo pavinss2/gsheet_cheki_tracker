@@ -207,14 +207,7 @@ def main():
         new_img_url = get_x_profile_image_url(clean_profile)
         
         if new_img_url:
-            # Reconstruct formula label if original had one
-            label = "Link"
-            if current_formula and current_formula.startswith("="):
-                m = re.search(r'=HYPERLINK\(\s*["\'][^"\']+["\']\s*,\s*["\']([^"\']+)["\']\)', current_formula, re.IGNORECASE)
-                if m:
-                    label = m.group(1)
-            
-            new_cell_value = f'=HYPERLINK("{new_img_url}", "{label}")'
+            new_cell_value = new_img_url
             col_letter = get_column_letter(member_image_idx)
             cell_range = f"'{SHEET_NAME}'!{col_letter}{row_num}"
             
