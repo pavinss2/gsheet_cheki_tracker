@@ -2,10 +2,11 @@ function onEdit(e) {
   if (!e || !e.range) return; // safety guard
 
   const sheet = e.range.getSheet();
-  if (sheet.getName() !== '(fact_cheki_transaction') return;
+  if (sheet.getName() !== 'fact_cheki_transaction') return;
 
   const lastCol = sheet.getLastColumn();
   const lastRow = sheet.getLastRow();
+  if (lastRow === 0 || lastCol === 0) return;
 
   const headerScan = sheet
     .getRange(1, 1, Math.min(10, lastRow), lastCol)
@@ -30,24 +31,30 @@ function onEdit(e) {
 
   if (headerRow === -1) return;
 
-  const editedRow = e.range.getRow();
-  if (editedRow <= headerRow) return;
+  const startRow = e.range.getRow();
+  const numRows = e.range.getNumRows();
 
-  // Quantity → 1
-  if (quantityCol > 0) {
-    const cell = sheet.getRange(editedRow, quantityCol);
-    if (cell.isBlank()) cell.setValue(1);
-  }
+  for (let r = 0; r < numRows; r++) {
+    const currentRow = startRow + r;
+    if (currentRow <= headerRow) continue;
 
-  // Type → "Cheki"
-  if (typeCol > 0) {
-    const cell = sheet.getRange(editedRow, typeCol);
-    if (cell.isBlank()) cell.setValue('Cheki');
-  }
+    // Quantity → 1
+    if (quantityCol > 0) {
+      const cell = sheet.getRange(currentRow, quantityCol);
+      if (cell.isBlank()) cell.setValue(1);
+    }
 
-  // Location → "Bangkok"
-  if (locationCol > 0) {
-    const cell = sheet.getRange(editedRow, locationCol);
-    if (cell.isBlank()) cell.setValue('Bangkok');
+    // Type → "Cheki"
+    if (typeCol > 0) {
+      const cell = sheet.getRange(currentRow, typeCol);
+      if (cell.isBlank()) cell.setValue('Cheki');
+    }
+
+    // Location → "Bangkok"
+    if (locationCol > 0) {
+      const cell = sheet.getRange(currentRow, locationCol);
+      if (cell.isBlank()) cell.setValue('Bangkok');
+    }
   }
 }
+
