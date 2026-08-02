@@ -2562,6 +2562,103 @@
     }
   });
 
+  /**
+   * Group transaction rows by shared cheki photo IMG URL.
+   * If multiple rows share the exact same non-empty IMG URL, merge them into 1 gallery item card.
+   */
+  function calGroupRowsForGallery(rows) {
+    if (!rows || !rows.length) return [];
+    let items = [];
+    let imgGroups = {};
+
+    rows.forEach(row => {
+      let imgUrl = calExtractImageUrl(row['IMG'] || row['img'] || '');
+      if (imgUrl) {
+        if (imgGroups[imgUrl]) {
+          imgGroups[imgUrl].rows.push(row);
+        } else {
+          let item = {
+            imgUrl: imgUrl,
+            rows: [row]
+          };
+          imgGroups[imgUrl] = item;
+          items.push(item);
+        }
+      } else {
+        items.push({
+          imgUrl: calGetRowImageUrl(row),
+          rows: [row]
+        });
+      }
+    });
+
+    items.forEach(item => {
+      item.isGroup     = item.rows.length > 1;
+      item.memberNames = [...new Set(item.rows.map(r => r['Member']).filter(Boolean))];
+      item.eventNames  = [...new Set(item.rows.map(r => r['Event']).filter(Boolean))];
+      let colors       = [...new Set(item.rows.map(r => r['Color']).filter(Boolean))];
+      item.colorHexes  = colors.map(c => COLOR_MAP[c] && COLOR_MAP[c].primary).filter(Boolean);
+      item.totalQty    = item.rows.reduce((sum, r) => sum + (Number(r['Quantity']) || Number(r['Qty']) || 1), 0);
+    });
+
+    return items;
+  }
+
+  /**
+   * Render a single cal-cheki-card HTML for a gallery item (handles grouped vs single).
+   */
+  function calRenderCardHtml(item, idx) {
+    let imgUrl = item.imgUrl || calGetRowImageUrl(item.rows[0]);
+    let qty = item.totalQty;
+    
+    let memberLabel = '';
+    if (item.memberNames.length === 1) {
+      memberLabel = item.memberNames[0];
+    } else if (item.memberNames.length === 2) {
+      memberLabel = item.memberNames.join(', ');
+    } else if (item.memberNames.length > 2) {
+      memberLabel = item.memberNames[0] + ', ' + item.memberNames[1] + ' +' + (item.memberNames.length - 2);
+    } else {
+      memberLabel = 'Unknown';
+    }
+
+    let pillHtml = '';
+    if (item.isGroup) {
+      let labelText = item.memberNames.length > 1
+        ? `👥 ${item.memberNames.length} members`
+        : `👥 ${qty} in 1 photo`;
+      let tooltipText = `Grouped photo: ${item.memberNames.join(', ')} (${qty} cheki total)`;
+      pillHtml = `<div class="cal-cheki-qty-pill cal-group-indicator" title="${calEscHtml(tooltipText)}">${calEscHtml(labelText)}</div>`;
+    } else if (qty > 1) {
+      pillHtml = `<div class="cal-cheki-qty-pill">×${qty}</div>`;
+    }
+
+    let colorDots = '';
+    if (item.colorHexes && item.colorHexes.length > 0) {
+      let uniqueHexes = [...new Set(item.colorHexes)].slice(0, 3);
+      colorDots = uniqueHexes.map((hex, i) => {
+        let rightPx = 5 + (i * 10);
+        return `<div class="cal-cheki-card-color-dot" style="background:${calEscHtml(hex)}; right:${rightPx}px;"></div>`;
+      }).join('');
+    }
+
+    let imgContent;
+    if (imgUrl) {
+      imgContent =
+        `<img src="${calEscHtml(imgUrl)}" alt="${calEscHtml(memberLabel)}" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` +
+        `<div class="cal-cheki-no-img" style="display:none;">📷<span>No image</span></div>`;
+    } else {
+      imgContent = `<div class="cal-cheki-no-img">📷<span>No image</span></div>`;
+    }
+
+    return `<div class="cal-cheki-card" data-idx="${idx}">
+      ${imgContent}
+      ${colorDots}
+      ${pillHtml}
+      <div class="cal-cheki-card-label" title="${calEscHtml(item.memberNames.join(', '))}">${calEscHtml(memberLabel)}</div>
+    </div>`;
+  }
+
   /** Feature 2: Show all cheki for the current month, separated/grouped by date */
   function calShowMonthGallery() {
     CAL_SELECTED_DATE = null;
@@ -2602,13 +2699,13 @@
       totalPrice > 0 ? `<span class="cal-detail-stat-chip">฿ <strong>${totalPrice.toLocaleString()}</strong></span>` : ''
     ].join('');
 
-    CAL_GALLERY_ROWS = allMonthRows;
-
-    let globalIdx = 0;
+    let globalItems = [];
     let htmlBuffer = [];
 
     sortedDates.forEach(dateKey => {
       let rows = dayMap[dateKey].rows;
+      let dateItems = calGroupRowsForGallery(rows);
+
       let parts = dateKey.split('-');
       let dateLabel = CAL_MONTH_NAMES[parseInt(parts[1], 10) - 1] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
 
@@ -2617,35 +2714,14 @@
 
       htmlBuffer.push(`<div class="cal-date-group-header">📅 ${dateLabel} (${rows.length})${eventText}</div>`);
 
-      rows.forEach(row => {
-        let idx = globalIdx++;
-        let imgUrl   = calGetRowImageUrl(row);
-        let member   = row['Member'] || 'Unknown';
-        let color    = row['Color']  || '';
-        let qty      = Number(row['Quantity']) || Number(row['Qty']) || 1;
-        let colorHex = (COLOR_MAP[color] && COLOR_MAP[color].primary) || '';
-
-        let colorDot = colorHex ? `<div class="cal-cheki-card-color-dot" style="background:${calEscHtml(colorHex)};" title="${calEscHtml(color)}"></div>` : '';
-        let qtyPill  = qty > 1 ? `<div class="cal-cheki-qty-pill">×${qty}</div>` : '';
-
-        let imgContent;
-        if (imgUrl) {
-          imgContent =
-            `<img src="${calEscHtml(imgUrl)}" alt="${calEscHtml(member)}" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` +
-            `<div class="cal-cheki-no-img" style="display:none;">📷<span>No image</span></div>`;
-        } else {
-          imgContent = `<div class="cal-cheki-no-img">📷<span>No image</span></div>`;
-        }
-
-        htmlBuffer.push(`<div class="cal-cheki-card" data-idx="${idx}">
-          ${imgContent}
-          ${colorDot}
-          ${qtyPill}
-          <div class="cal-cheki-card-label">${calEscHtml(member)}</div>
-        </div>`);
+      dateItems.forEach(item => {
+        let idx = globalItems.length;
+        globalItems.push(item);
+        htmlBuffer.push(calRenderCardHtml(item, idx));
       });
     });
 
+    CAL_GALLERY_ITEMS = globalItems;
     gallery.innerHTML = htmlBuffer.join('');
     panel.style.display = 'block';
   }
@@ -2659,7 +2735,6 @@
   }
 
   function calSelectDay(dateStr) {
-    // If clicking the currently selected day, switch back to full month view!
     if (CAL_SELECTED_DATE === dateStr) {
       CAL_SELECTED_DATE = null;
       document.querySelectorAll('.cal-day.cal-day-selected').forEach(el => el.classList.remove('cal-day-selected'));
@@ -2683,9 +2758,9 @@
     dateEl.textContent = CAL_MONTH_NAMES[parseInt(parts[1], 10) - 1] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
 
     let dayData = dayMap[dateStr];
-    CAL_GALLERY_ROWS = dayData ? dayData.rows : [];
+    let dayRows = dayData ? dayData.rows : [];
 
-    if (!dayData || dayData.rows.length === 0) {
+    if (!dayData || dayRows.length === 0) {
       statsEl.innerHTML = '';
       gallery.innerHTML = `<div class="cal-empty-day-msg">📷 No cheki recorded on this day.</div>`;
       panel.style.display = 'block';
@@ -2693,39 +2768,17 @@
       return;
     }
 
-    let uniqueMembers = [...new Set(dayData.rows.map(r => r['Member']).filter(Boolean))];
+    let uniqueMembers = [...new Set(dayRows.map(r => r['Member']).filter(Boolean))];
     statsEl.innerHTML = [
       `<span class="cal-detail-stat-chip">📸 <strong>${dayData.qty}</strong> cheki</span>`,
       `<span class="cal-detail-stat-chip">👤 <strong>${uniqueMembers.length}</strong> member${uniqueMembers.length !== 1 ? 's' : ''}</span>`,
       dayData.price > 0 ? `<span class="cal-detail-stat-chip">฿ <strong>${dayData.price.toLocaleString()}</strong></span>` : ''
     ].join('');
 
-    let cards = dayData.rows.map((row, idx) => {
-      let imgUrl   = calGetRowImageUrl(row);
-      let member   = row['Member'] || 'Unknown';
-      let color    = row['Color']  || '';
-      let qty      = Number(row['Quantity']) || Number(row['Qty']) || 1;
-      let colorHex = (COLOR_MAP[color] && COLOR_MAP[color].primary) || '';
+    let items = calGroupRowsForGallery(dayRows);
+    CAL_GALLERY_ITEMS = items;
 
-      let colorDot = colorHex ? `<div class="cal-cheki-card-color-dot" style="background:${calEscHtml(colorHex)};" title="${calEscHtml(color)}"></div>` : '';
-      let qtyPill  = qty > 1 ? `<div class="cal-cheki-qty-pill">×${qty}</div>` : '';
-
-      let imgContent;
-      if (imgUrl) {
-        imgContent =
-          `<img src="${calEscHtml(imgUrl)}" alt="${calEscHtml(member)}" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` +
-          `<div class="cal-cheki-no-img" style="display:none;">📷<span>No image</span></div>`;
-      } else {
-        imgContent = `<div class="cal-cheki-no-img">📷<span>No image</span></div>`;
-      }
-
-      return `<div class="cal-cheki-card" data-idx="${idx}">
-        ${imgContent}
-        ${colorDot}
-        ${qtyPill}
-        <div class="cal-cheki-card-label">${calEscHtml(member)}</div>
-      </div>`;
-    }).join('');
+    let cards = items.map((item, idx) => calRenderCardHtml(item, idx)).join('');
 
     gallery.innerHTML = cards;
     panel.style.display = 'block';
@@ -2734,8 +2787,8 @@
 
   /** Feature 3: Lightbox Modal with Next / Prev image navigation */
   function calOpenImgModal(idx) {
-    let row = CAL_GALLERY_ROWS[idx];
-    if (!row) return;
+    let item = CAL_GALLERY_ITEMS[idx];
+    if (!item) return;
 
     CAL_MODAL_CURRENT_IDX = idx;
 
@@ -2744,10 +2797,9 @@
     let infoEl = document.getElementById('cal_img_modal_info');
     if (!modal) return;
 
-    let imgUrl  = calGetRowImageUrl(row);
-    let member  = row['Member'] || 'Unknown';
-    let event   = row['Event']  || '';
-    let qty     = Number(row['Quantity']) || Number(row['Qty']) || 1;
+    let imgUrl  = item.imgUrl || calGetRowImageUrl(item.rows[0]);
+    let members = item.memberNames.join(', ') || 'Unknown';
+    let events  = item.eventNames.join(', ') || '';
 
     if (imgUrl) {
       imgEl.src = imgUrl;
@@ -2757,19 +2809,26 @@
       imgEl.style.display = 'none';
     }
 
-    let dateStr = row['Date'] || '';
+    let firstRow = item.rows[0];
+    let dateStr  = firstRow['Date'] || '';
     if (dateStr.includes(' ')) dateStr = dateStr.split(' ')[0];
     let parts = dateStr.split('-');
     let displayDate = parts.length === 3
       ? CAL_MONTH_NAMES[parseInt(parts[1],10)-1] + ' ' + parseInt(parts[2],10) + ', ' + parts[0]
       : dateStr;
 
-    infoEl.innerHTML =
-      `<strong>${calEscHtml(member)}</strong>` +
-      (event ? ` &mdash; ${calEscHtml(event)}` : '') +
-      `<br><span style="color:#71717a;font-size:11px;">${displayDate}${qty > 1 ? ' &nbsp;·&nbsp; ×' + qty : ''} &nbsp;(${idx + 1}/${CAL_GALLERY_ROWS.length})</span>`;
+    let groupDetails = '';
+    if (item.isGroup) {
+      let breakdown = item.rows.map(r => `${r['Member'] || 'Unknown'}${r['Quantity'] > 1 ? ' ×' + r['Quantity'] : ''}`).join(', ');
+      groupDetails = `<br><span style="color:#c084fc;font-size:11.5px;">👥 Grouped Photo: ${calEscHtml(breakdown)}</span>`;
+    }
 
-    // Update modal arrow button states
+    infoEl.innerHTML =
+      `<strong>${calEscHtml(members)}</strong>` +
+      (events ? ` &mdash; ${calEscHtml(events)}` : '') +
+      `<br><span style="color:#71717a;font-size:11px;">${displayDate} &nbsp;·&nbsp; ${item.totalQty} cheki &nbsp;(${idx + 1}/${CAL_GALLERY_ITEMS.length})</span>` +
+      groupDetails;
+
     let prevBtn = document.getElementById('cal_modal_prev_btn');
     let nextBtn = document.getElementById('cal_modal_next_btn');
     if (prevBtn) {
@@ -2777,7 +2836,7 @@
       else prevBtn.classList.add('disabled');
     }
     if (nextBtn) {
-      if (idx < CAL_GALLERY_ROWS.length - 1) nextBtn.classList.remove('disabled');
+      if (idx < CAL_GALLERY_ITEMS.length - 1) nextBtn.classList.remove('disabled');
       else nextBtn.classList.add('disabled');
     }
 
@@ -2787,7 +2846,7 @@
 
   function calNavigateModal(direction) {
     let newIdx = CAL_MODAL_CURRENT_IDX + direction;
-    if (newIdx >= 0 && newIdx < CAL_GALLERY_ROWS.length) {
+    if (newIdx >= 0 && newIdx < CAL_GALLERY_ITEMS.length) {
       calOpenImgModal(newIdx);
     }
   }
@@ -2816,12 +2875,14 @@
     let targetRow = source[filteredIdx];
     if (!targetRow) return;
 
-    // Collect all rows from filtered data that have an actual IMG column URL
     let rowsWithImages = source.filter(r => !!calExtractImageUrl(r['IMG'] || r['img']));
     if (rowsWithImages.length === 0) rowsWithImages = [targetRow];
 
-    CAL_GALLERY_ROWS = rowsWithImages;
-    let matchedIdx = rowsWithImages.indexOf(targetRow);
+    let items = calGroupRowsForGallery(rowsWithImages);
+    CAL_GALLERY_ITEMS = items;
+
+    // Find item containing targetRow
+    let matchedIdx = items.findIndex(item => item.rows.includes(targetRow));
     if (matchedIdx === -1) matchedIdx = 0;
 
     calOpenImgModal(matchedIdx);
