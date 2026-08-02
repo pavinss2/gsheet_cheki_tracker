@@ -2572,21 +2572,21 @@
     let imgGroups = {};
 
     rows.forEach(row => {
-      let imgUrl = calExtractImageUrl(row['IMG'] || row['img'] || '');
-      if (imgUrl) {
-        if (imgGroups[imgUrl]) {
-          imgGroups[imgUrl].rows.push(row);
+      let chekiImgUrl = calExtractImageUrl(row['IMG'] || row['img'] || '');
+      if (chekiImgUrl) {
+        if (imgGroups[chekiImgUrl]) {
+          imgGroups[chekiImgUrl].rows.push(row);
         } else {
           let item = {
-            imgUrl: imgUrl,
+            chekiImgUrl: chekiImgUrl,
             rows: [row]
           };
-          imgGroups[imgUrl] = item;
+          imgGroups[chekiImgUrl] = item;
           items.push(item);
         }
       } else {
         items.push({
-          imgUrl: calGetRowImageUrl(row),
+          chekiImgUrl: '',
           rows: [row]
         });
       }
@@ -2599,6 +2599,7 @@
       let colors       = [...new Set(item.rows.map(r => r['Color']).filter(Boolean))];
       item.colorHexes  = colors.map(c => COLOR_MAP[c] && COLOR_MAP[c].primary).filter(Boolean);
       item.totalQty    = item.rows.reduce((sum, r) => sum + (Number(r['Quantity']) || Number(r['Qty']) || 1), 0);
+      item.memberImgUrl = calGetMemberImageUrl(item.memberNames[0]);
     });
 
     return items;
@@ -2608,7 +2609,7 @@
    * Render a single cal-cheki-card HTML for a gallery item (handles grouped vs single).
    */
   function calRenderCardHtml(item, idx) {
-    let imgUrl = item.imgUrl || calGetRowImageUrl(item.rows[0]);
+    let imgUrl = item.chekiImgUrl || item.memberImgUrl;
     let qty = item.totalQty;
     
     let memberLabel = '';
@@ -2797,16 +2798,16 @@
     let infoEl = document.getElementById('cal_img_modal_info');
     if (!modal) return;
 
-    let imgUrl  = item.imgUrl || calGetRowImageUrl(item.rows[0]);
-    let members = item.memberNames.join(', ') || 'Unknown';
-    let events  = item.eventNames.join(', ') || '';
+    let imgUrl      = item.chekiImgUrl || '';
+    let members     = item.memberNames.join(', ') || 'Unknown';
+    let events      = item.eventNames.join(', ') || '';
+    let placeholder = document.getElementById('cal_img_modal_placeholder');
 
     if (imgUrl) {
-      // Instantly hide previous image so it doesn't linger while new image loads
+      if (placeholder) placeholder.style.display = 'none';
       imgEl.style.opacity = '0';
       imgEl.style.display = 'block';
       
-      // Clean up previous event handlers
       imgEl.onload = null;
       imgEl.onerror = null;
 
@@ -2821,6 +2822,7 @@
       tempImg.onerror = function() {
         if (CAL_MODAL_CURRENT_IDX === idx) {
           imgEl.style.display = 'none';
+          if (placeholder) placeholder.style.display = 'flex';
         }
       };
       tempImg.src = imgUrl;
@@ -2828,6 +2830,7 @@
       imgEl.src = '';
       imgEl.style.opacity = '0';
       imgEl.style.display = 'none';
+      if (placeholder) placeholder.style.display = 'flex';
     }
 
     let firstRow = item.rows[0];
