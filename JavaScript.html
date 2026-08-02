@@ -2345,8 +2345,8 @@
   let CAL_YEAR  = new Date().getFullYear();
   let CAL_MONTH = new Date().getMonth(); // 0-indexed
   let CAL_SELECTED_DATE = null; // 'YYYY-MM-DD'
-  let CAL_GALLERY_ROWS = []; // current gallery rows for modal navigation
-  let CAL_MODAL_CURRENT_IDX = -1; // active image index in CAL_GALLERY_ROWS
+  let CAL_GALLERY_ITEMS = []; // current gallery items for modal navigation
+  let CAL_MODAL_CURRENT_IDX = -1; // active image index in CAL_GALLERY_ITEMS
 
   const CAL_MONTH_NAMES = [
     'January','February','March','April','May','June',
@@ -2550,7 +2550,7 @@
     let card = e.target.closest('.cal-cheki-card[data-idx]');
     if (card) {
       let idx = parseInt(card.getAttribute('data-idx'), 10);
-      if (CAL_GALLERY_ROWS[idx]) calOpenImgModal(idx);
+      if (CAL_GALLERY_ITEMS[idx]) calOpenImgModal(idx);
       return;
     }
     // Raw Data table [ ⌕ ] button clicks
