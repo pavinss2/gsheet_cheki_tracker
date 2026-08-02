@@ -2444,21 +2444,37 @@
     // Month stats
     let monthPrefix = CAL_YEAR + '-' + String(CAL_MONTH + 1).padStart(2, '0');
     let monthQty = 0, monthPrice = 0, activeDays = 0, maxDayQty = 0;
+    let monthMembersSet = new Set();
+    let monthEventsSet  = new Set();
+
     for (let key in dayMap) {
       if (key.startsWith(monthPrefix)) {
-        monthQty   += dayMap[key].qty;
-        monthPrice += dayMap[key].price;
+        let dayData = dayMap[key];
+        monthQty   += dayData.qty;
+        monthPrice += dayData.price;
         activeDays++;
-        if (dayMap[key].qty > maxDayQty) maxDayQty = dayMap[key].qty;
+        if (dayData.qty > maxDayQty) maxDayQty = dayData.qty;
+
+        dayData.rows.forEach(r => {
+          if (r['Member']) monthMembersSet.add(r['Member']);
+          if (r['Event'] && String(r['Event']).trim() !== '') monthEventsSet.add(String(r['Event']).trim());
+        });
       }
     }
 
-    // Summary strip
+    let uniqueMembersCount = monthMembersSet.size;
+    let uniqueEventsCount  = monthEventsSet.size;
+
+    // Summary strip: 1. cheki, 2. member, 3. active days, 4. event, 5. thb
     if (monthQty > 0) {
       summary.innerHTML =
         `<span class="cal-summary-chip">📸 <strong>${monthQty.toLocaleString()}</strong> cheki</span>` +
         `<span class="cal-summary-sep">|</span>` +
+        `<span class="cal-summary-chip">👤 <strong>${uniqueMembersCount}</strong> member${uniqueMembersCount !== 1 ? 's' : ''}</span>` +
+        `<span class="cal-summary-sep">|</span>` +
         `<span class="cal-summary-chip">📅 <strong>${activeDays}</strong> active day${activeDays !== 1 ? 's' : ''}</span>` +
+        `<span class="cal-summary-sep">|</span>` +
+        `<span class="cal-summary-chip">🎤 <strong>${uniqueEventsCount}</strong> event${uniqueEventsCount !== 1 ? 's' : ''}</span>` +
         `<span class="cal-summary-sep">|</span>` +
         `<span class="cal-summary-chip">฿ <strong>${monthPrice.toLocaleString()}</strong></span>`;
     } else {
