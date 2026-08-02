@@ -2464,13 +2464,15 @@
 
     let uniqueMembersCount = monthMembersSet.size;
     let uniqueEventsCount  = monthEventsSet.size;
+    let sortedMonthMembers = Array.from(monthMembersSet).sort();
+    let monthMembersTooltip = calEscHtml(sortedMonthMembers.join(', '));
 
     // Summary strip: 1. cheki, 2. member, 3. active days, 4. event, 5. thb
     if (monthQty > 0) {
       summary.innerHTML =
         `<span class="cal-summary-chip">📸 <strong>${monthQty.toLocaleString()}</strong> cheki</span>` +
         `<span class="cal-summary-sep">|</span>` +
-        `<span class="cal-summary-chip">👤 <strong>${uniqueMembersCount}</strong> member${uniqueMembersCount !== 1 ? 's' : ''}</span>` +
+        `<span class="cal-summary-chip" title="${monthMembersTooltip}">👤 <strong>${uniqueMembersCount}</strong> member${uniqueMembersCount !== 1 ? 's' : ''}</span>` +
         `<span class="cal-summary-sep">|</span>` +
         `<span class="cal-summary-chip">📅 <strong>${activeDays}</strong> active day${activeDays !== 1 ? 's' : ''}</span>` +
         `<span class="cal-summary-sep">|</span>` +
@@ -2708,11 +2710,12 @@
 
     let totalQty = allMonthRows.reduce((s, r) => s + (Number(r['Quantity']) || Number(r['Qty']) || 0), 0);
     let totalPrice = allMonthRows.reduce((s, r) => s + (Number(r['Total Price (THB)']) || 0), 0);
-    let uniqueMembers = [...new Set(allMonthRows.map(r => r['Member']).filter(Boolean))];
+    let uniqueMembers = [...new Set(allMonthRows.map(r => r['Member']).filter(Boolean))].sort();
+    let monthMembersTooltip = calEscHtml(uniqueMembers.join(', '));
 
     statsEl.innerHTML = [
       `<span class="cal-detail-stat-chip">📸 <strong>${totalQty}</strong> cheki</span>`,
-      `<span class="cal-detail-stat-chip">👤 <strong>${uniqueMembers.length}</strong> member${uniqueMembers.length !== 1 ? 's' : ''}</span>`,
+      `<span class="cal-detail-stat-chip" title="${monthMembersTooltip}">👤 <strong>${uniqueMembers.length}</strong> member${uniqueMembers.length !== 1 ? 's' : ''}</span>`,
       totalPrice > 0 ? `<span class="cal-detail-stat-chip">฿ <strong>${totalPrice.toLocaleString()}</strong></span>` : ''
     ].join('');
 
@@ -2785,10 +2788,12 @@
       return;
     }
 
-    let uniqueMembers = [...new Set(dayRows.map(r => r['Member']).filter(Boolean))];
+    let uniqueMembers = [...new Set(dayRows.map(r => r['Member']).filter(Boolean))].sort();
+    let dayMembersTooltip = calEscHtml(uniqueMembers.join(', '));
+
     statsEl.innerHTML = [
       `<span class="cal-detail-stat-chip">📸 <strong>${dayData.qty}</strong> cheki</span>`,
-      `<span class="cal-detail-stat-chip">👤 <strong>${uniqueMembers.length}</strong> member${uniqueMembers.length !== 1 ? 's' : ''}</span>`,
+      `<span class="cal-detail-stat-chip" title="${dayMembersTooltip}">👤 <strong>${uniqueMembers.length}</strong> member${uniqueMembers.length !== 1 ? 's' : ''}</span>`,
       dayData.price > 0 ? `<span class="cal-detail-stat-chip">฿ <strong>${dayData.price.toLocaleString()}</strong></span>` : ''
     ].join('');
 
