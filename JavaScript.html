@@ -543,6 +543,8 @@
     
     if (activeTab.id === 'home_view_tab') {
       drawHomeTimelineChart();
+    } else if (activeTab.id === 'calendar_view_tab') {
+      renderCalendarView();
     } else if (activeTab.id === 'raw_data_tab') {
       renderRawTable();
       renderMetadataTables();
@@ -629,10 +631,13 @@
           inlineStyle = 'style="' + getTextColorStyle(val) + '"';
         }
 
-        if (h === 'IMG' && val && (String(val).startsWith('http://') || String(val).startsWith('https://'))) {
-          htmlBuffer.push('<td><a class="image-link" href="' + val + '" target="_blank">[ <span style="font-size: 16px; font-weight: bold; display: inline-block; vertical-align: middle; line-height: 1;">⌕</span> ]</a></td>');
-        } else if (h === 'IMG') {
-          htmlBuffer.push('<td>' + val + '</td>');
+        if (h === 'IMG') {
+          let cellImgUrl = calExtractImageUrl(val);
+          if (cellImgUrl) {
+            htmlBuffer.push('<td><span class="image-link raw-img-btn" data-raw-idx="' + i + '" style="cursor:pointer;" title="View Image">[ <span style="font-size: 16px; font-weight: bold; display: inline-block; vertical-align: middle; line-height: 1;">⌕</span> ]</span></td>');
+          } else {
+            htmlBuffer.push('<td></td>');
+          }
         } else if (ALLOWED_GRID_FILTERS.has(h)) {
           let safeVal = String(val).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
           htmlBuffer.push('<td ' + inlineStyle + ' class="raw-clickable-cell" onclick="filterByCell(\'' + h + '\', \'' + safeVal + '\')">' + val + '</td>');
@@ -2331,5 +2336,494 @@
     document.querySelectorAll('.kpi-card.active-tooltip').forEach(c => {
       c.classList.remove('active-tooltip');
     });
+  }
+
+  // ==========================================
+  // CALENDAR & IMAGE MODAL VIEW
+  // ==========================================
+
+  let CAL_YEAR  = new Date().getFullYear();
+  let CAL_MONTH = new Date().getMonth(); // 0-indexed
+  let CAL_SELECTED_DATE = null; // 'YYYY-MM-DD'
+  let CAL_GALLERY_ROWS = []; // current gallery rows for modal navigation
+  let CAL_MODAL_CURRENT_IDX = -1; // active image index in CAL_GALLERY_ROWS
+
+  const CAL_MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+
+  /** Minimal HTML-safe escaping for inserting into attributes / innerHTML */
+  function calEscHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  /**
+   * Extract a plain URL from a cell value that may be:
+   *   - A raw URL string
+   *   - A Sheets formula: =HYPERLINK("url","label"), =IMAGE("url"), =IMAGE("url",mode)
+   *   - Any formula containing a quoted URL
+   */
+  function calExtractImageUrl(raw) {
+    if (!raw) return '';
+    let s = String(raw).trim();
+    if (/^https?:\/\//i.test(s)) return s;
+    if (s.charAt(0) === '=') {
+      let m = s.match(/HYPERLINK\(\s*"([^"]+)"/i);
+      if (m) return m[1];
+      m = s.match(/IMAGE\(\s*"([^"]+)"/i);
+      if (m) return m[1];
+      m = s.match(/"(https?:\/\/[^"]+)"/);
+      if (m) return m[1];
+      m = s.match(/'(https?:\/\/[^']+)'/);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  /**
+   * Best image URL for a transaction row:
+   *   1. IMG column (cheki photo)
+   *   2. Fallback: member_image from dim_member
+   */
+  function calGetRowImageUrl(row) {
+    if (!row) return '';
+    let imgUrl = calExtractImageUrl(row['IMG'] || row['img'] || '');
+    if (imgUrl) return imgUrl;
+    return calGetMemberImageUrl(row['Member']);
+  }
+
+  /**
+   * Get ONLY the member profile image (from dim_member), ignoring the cheki IMG column.
+   */
+  function calGetMemberImageUrl(memberName) {
+    if (!memberName || !METADATA || !METADATA.members) return '';
+    let mem = METADATA.members.find(m => m.member_name === memberName);
+    if (!mem) mem = METADATA.members.find(m => m.member_name === memberName && (m.is_active === true || m.is_active === 'TRUE'));
+    if (mem && mem.member_image && mem.member_image !== 'None' && mem.member_image !== '') {
+      return calExtractImageUrl(mem.member_image) || mem.member_image;
+    }
+    return '';
+  }
+
+  /**
+   * Build a map { 'YYYY-MM-DD': { qty, price, rows[] } } from FILTERED_DATA.
+   */
+  function calBuildDayMap() {
+    let map = {};
+    let source = FILTERED_DATA && FILTERED_DATA.length > 0 ? FILTERED_DATA : ALL_DATA;
+    for (let i = 0; i < source.length; i++) {
+      let row = source[i];
+      let d = row['Date'] || '';
+      if (!d) continue;
+      let dateStr = String(d).trim();
+      if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+      else if (dateStr.includes(' ')) dateStr = dateStr.split(' ')[0];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) continue;
+      if (!map[dateStr]) map[dateStr] = { qty: 0, price: 0, rows: [] };
+      let q = Number(row['Quantity']) || Number(row['Qty']) || 0;
+      let p = Number(row['Total Price (THB)']) || 0;
+      map[dateStr].qty   += q;
+      map[dateStr].price += p;
+      map[dateStr].rows.push(row);
+    }
+    return map;
+  }
+
+  function renderCalendarView() {
+    let grid        = document.getElementById('cal_day_grid');
+    let label       = document.getElementById('cal_month_label');
+    let summary     = document.getElementById('cal_month_summary');
+    if (!grid) return;
+
+    label.textContent = CAL_MONTH_NAMES[CAL_MONTH] + ' ' + CAL_YEAR;
+
+    let dayMap = calBuildDayMap();
+
+    // Month stats
+    let monthPrefix = CAL_YEAR + '-' + String(CAL_MONTH + 1).padStart(2, '0');
+    let monthQty = 0, monthPrice = 0, activeDays = 0, maxDayQty = 0;
+    for (let key in dayMap) {
+      if (key.startsWith(monthPrefix)) {
+        monthQty   += dayMap[key].qty;
+        monthPrice += dayMap[key].price;
+        activeDays++;
+        if (dayMap[key].qty > maxDayQty) maxDayQty = dayMap[key].qty;
+      }
+    }
+
+    // Summary strip
+    if (monthQty > 0) {
+      summary.innerHTML =
+        `<span class="cal-summary-chip">📸 <strong>${monthQty.toLocaleString()}</strong> cheki</span>` +
+        `<span class="cal-summary-sep">|</span>` +
+        `<span class="cal-summary-chip">📅 <strong>${activeDays}</strong> active day${activeDays !== 1 ? 's' : ''}</span>` +
+        `<span class="cal-summary-sep">|</span>` +
+        `<span class="cal-summary-chip">฿ <strong>${monthPrice.toLocaleString()}</strong></span>`;
+    } else {
+      summary.innerHTML = `<span style="color:#52525b;">No cheki recorded for this month.</span>`;
+    }
+
+    // First day of month — Mon-based offset
+    let rawDow = new Date(CAL_YEAR, CAL_MONTH, 1).getDay(); // 0=Sun
+    let startOffset = (rawDow === 0) ? 6 : rawDow - 1;
+    let daysInMonth = new Date(CAL_YEAR, CAL_MONTH + 1, 0).getDate();
+    let todayStr = new Date().toISOString().split('T')[0];
+
+    let cells = [];
+
+    // Leading empties
+    for (let i = 0; i < startOffset; i++) {
+      cells.push('<div class="cal-day cal-day-empty"></div>');
+    }
+
+    // Day cells
+    for (let d = 1; d <= daysInMonth; d++) {
+      let dateStr = CAL_YEAR + '-' + String(CAL_MONTH + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      let dayData = dayMap[dateStr];
+      let qty = dayData ? dayData.qty : 0;
+
+      let cls = 'cal-day';
+      if (dateStr === todayStr)          cls += ' cal-day-today';
+      if (dateStr === CAL_SELECTED_DATE) cls += ' cal-day-selected';
+      if (qty > 0)                       cls += ' cal-day-has-cheki';
+
+      if (qty > 0 && maxDayQty > 0) {
+        let pct = qty / maxDayQty;
+        cls += pct <= 0.20 ? ' heat-1' : pct <= 0.40 ? ' heat-2' : pct <= 0.60 ? ' heat-3' : pct <= 0.80 ? ' heat-4' : ' heat-5';
+      }
+
+      // Mini avatar grid (up to 8 unique members, 4 per row, max 2 rows)
+      let avatarsHtml = '';
+      if (dayData && dayData.rows.length > 0) {
+        let seen = new Set(), items = [];
+        for (let r = 0; r < dayData.rows.length && items.length < 8; r++) {
+          let mem = dayData.rows[r]['Member'];
+          if (!mem || seen.has(mem)) continue;
+          seen.add(mem);
+          let url = calGetMemberImageUrl(mem);
+          if (url) {
+            items.push(`<img class="cal-cell-avatar" src="${calEscHtml(url)}" referrerpolicy="no-referrer" onerror="this.style.display='none'" title="${calEscHtml(mem)}">`);
+          } else {
+            items.push(`<div class="cal-cell-avatar-dot" title="${calEscHtml(mem)}"></div>`);
+          }
+        }
+        if (items.length) avatarsHtml = `<div class="cal-cell-avatars">${items.join('')}</div>`;
+      }
+
+      let inner = `<div class="cal-day-number">${d}</div>`;
+      if (qty > 0) inner += `<div class="cal-qty-badge">${qty}</div>${avatarsHtml}`;
+
+      cells.push(`<div class="${cls}" data-date="${dateStr}">${inner}</div>`);
+    }
+
+    // Trailing empties
+    let trailing = (7 - ((startOffset + daysInMonth) % 7)) % 7;
+    for (let i = 0; i < trailing; i++) cells.push('<div class="cal-day cal-day-empty"></div>');
+
+    grid.innerHTML = cells.join('');
+
+    // Feature 1: Default to full month view if no specific day is selected!
+    if (CAL_SELECTED_DATE && CAL_SELECTED_DATE.startsWith(monthPrefix)) {
+      calRenderDetailPanel(CAL_SELECTED_DATE, dayMap);
+    } else {
+      calShowMonthGallery();
+    }
+  }
+
+  // Global click delegation
+  document.addEventListener('click', function(e) {
+    // Day cell clicks
+    let dayCell = e.target.closest('.cal-day[data-date]');
+    if (dayCell) {
+      calSelectDay(dayCell.getAttribute('data-date'));
+      return;
+    }
+    // Monthly summary strip click
+    let summaryEl = e.target.closest('#cal_month_summary');
+    if (summaryEl) {
+      calShowMonthGallery();
+      return;
+    }
+    // Gallery card clicks in Calendar
+    let card = e.target.closest('.cal-cheki-card[data-idx]');
+    if (card) {
+      let idx = parseInt(card.getAttribute('data-idx'), 10);
+      if (CAL_GALLERY_ROWS[idx]) calOpenImgModal(idx);
+      return;
+    }
+    // Raw Data table [ ⌕ ] button clicks
+    let rawImgBtn = e.target.closest('.raw-img-btn[data-raw-idx]');
+    if (rawImgBtn) {
+      let rawIdx = parseInt(rawImgBtn.getAttribute('data-raw-idx'), 10);
+      openRawDataImageModal(rawIdx);
+      return;
+    }
+  });
+
+  /** Feature 2: Show all cheki for the current month, separated/grouped by date */
+  function calShowMonthGallery() {
+    CAL_SELECTED_DATE = null;
+    document.querySelectorAll('.cal-day.cal-day-selected').forEach(el => el.classList.remove('cal-day-selected'));
+
+    let dayMap = calBuildDayMap();
+    let monthPrefix = CAL_YEAR + '-' + String(CAL_MONTH + 1).padStart(2, '0');
+
+    let sortedDates = Object.keys(dayMap).filter(k => k.startsWith(monthPrefix)).sort();
+
+    let allMonthRows = [];
+    sortedDates.forEach(dateKey => {
+      allMonthRows = allMonthRows.concat(dayMap[dateKey].rows);
+    });
+
+    let panel   = document.getElementById('cal_detail_panel');
+    let dateEl  = document.getElementById('cal_detail_date');
+    let statsEl = document.getElementById('cal_detail_stats');
+    let gallery = document.getElementById('cal_cheki_gallery');
+
+    if (allMonthRows.length === 0) {
+      dateEl.textContent = CAL_MONTH_NAMES[CAL_MONTH] + ' ' + CAL_YEAR;
+      statsEl.innerHTML = '';
+      gallery.innerHTML = `<div class="cal-empty-day-msg">📷 No cheki recorded for this month.</div>`;
+      panel.style.display = 'block';
+      return;
+    }
+
+    dateEl.textContent = CAL_MONTH_NAMES[CAL_MONTH] + ' ' + CAL_YEAR;
+
+    let totalQty = allMonthRows.reduce((s, r) => s + (Number(r['Quantity']) || Number(r['Qty']) || 0), 0);
+    let totalPrice = allMonthRows.reduce((s, r) => s + (Number(r['Total Price (THB)']) || 0), 0);
+    let uniqueMembers = [...new Set(allMonthRows.map(r => r['Member']).filter(Boolean))];
+
+    statsEl.innerHTML = [
+      `<span class="cal-detail-stat-chip">📸 <strong>${totalQty}</strong> cheki</span>`,
+      `<span class="cal-detail-stat-chip">👤 <strong>${uniqueMembers.length}</strong> member${uniqueMembers.length !== 1 ? 's' : ''}</span>`,
+      totalPrice > 0 ? `<span class="cal-detail-stat-chip">฿ <strong>${totalPrice.toLocaleString()}</strong></span>` : ''
+    ].join('');
+
+    CAL_GALLERY_ROWS = allMonthRows;
+
+    let globalIdx = 0;
+    let htmlBuffer = [];
+
+    sortedDates.forEach(dateKey => {
+      let rows = dayMap[dateKey].rows;
+      let parts = dateKey.split('-');
+      let dateLabel = CAL_MONTH_NAMES[parseInt(parts[1], 10) - 1] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
+
+      let uniqueEvents = [...new Set(rows.map(r => r['Event']).filter(e => e && String(e).trim() !== ''))];
+      let eventText = uniqueEvents.length > 0 ? ` &mdash; <span style="font-weight:400; color:#e4e4e7;">${calEscHtml(uniqueEvents.join(', '))}</span>` : '';
+
+      htmlBuffer.push(`<div class="cal-date-group-header">📅 ${dateLabel} (${rows.length})${eventText}</div>`);
+
+      rows.forEach(row => {
+        let idx = globalIdx++;
+        let imgUrl   = calGetRowImageUrl(row);
+        let member   = row['Member'] || 'Unknown';
+        let color    = row['Color']  || '';
+        let qty      = Number(row['Quantity']) || Number(row['Qty']) || 1;
+        let colorHex = (COLOR_MAP[color] && COLOR_MAP[color].primary) || '';
+
+        let colorDot = colorHex ? `<div class="cal-cheki-card-color-dot" style="background:${calEscHtml(colorHex)};" title="${calEscHtml(color)}"></div>` : '';
+        let qtyPill  = qty > 1 ? `<div class="cal-cheki-qty-pill">×${qty}</div>` : '';
+
+        let imgContent;
+        if (imgUrl) {
+          imgContent =
+            `<img src="${calEscHtml(imgUrl)}" alt="${calEscHtml(member)}" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` +
+            `<div class="cal-cheki-no-img" style="display:none;">📷<span>No image</span></div>`;
+        } else {
+          imgContent = `<div class="cal-cheki-no-img">📷<span>No image</span></div>`;
+        }
+
+        htmlBuffer.push(`<div class="cal-cheki-card" data-idx="${idx}">
+          ${imgContent}
+          ${colorDot}
+          ${qtyPill}
+          <div class="cal-cheki-card-label">${calEscHtml(member)}</div>
+        </div>`);
+      });
+    });
+
+    gallery.innerHTML = htmlBuffer.join('');
+    panel.style.display = 'block';
+  }
+
+  function calNavigate(direction) {
+    CAL_MONTH += direction;
+    if (CAL_MONTH > 11) { CAL_MONTH = 0;  CAL_YEAR++; }
+    if (CAL_MONTH < 0)  { CAL_MONTH = 11; CAL_YEAR--; }
+    CAL_SELECTED_DATE = null;
+    renderCalendarView();
+  }
+
+  function calSelectDay(dateStr) {
+    // If clicking the currently selected day, switch back to full month view!
+    if (CAL_SELECTED_DATE === dateStr) {
+      CAL_SELECTED_DATE = null;
+      document.querySelectorAll('.cal-day.cal-day-selected').forEach(el => el.classList.remove('cal-day-selected'));
+      calShowMonthGallery();
+      return;
+    }
+    CAL_SELECTED_DATE = dateStr;
+    document.querySelectorAll('.cal-day.cal-day-selected').forEach(el => el.classList.remove('cal-day-selected'));
+    document.querySelectorAll(`.cal-day[data-date="${dateStr}"]`).forEach(el => el.classList.add('cal-day-selected'));
+    calRenderDetailPanel(dateStr, calBuildDayMap());
+  }
+
+  function calRenderDetailPanel(dateStr, dayMap) {
+    let panel   = document.getElementById('cal_detail_panel');
+    let dateEl  = document.getElementById('cal_detail_date');
+    let statsEl = document.getElementById('cal_detail_stats');
+    let gallery = document.getElementById('cal_cheki_gallery');
+    if (!panel) return;
+
+    let parts = dateStr.split('-');
+    dateEl.textContent = CAL_MONTH_NAMES[parseInt(parts[1], 10) - 1] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
+
+    let dayData = dayMap[dateStr];
+    CAL_GALLERY_ROWS = dayData ? dayData.rows : [];
+
+    if (!dayData || dayData.rows.length === 0) {
+      statsEl.innerHTML = '';
+      gallery.innerHTML = `<div class="cal-empty-day-msg">📷 No cheki recorded on this day.</div>`;
+      panel.style.display = 'block';
+      setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+      return;
+    }
+
+    let uniqueMembers = [...new Set(dayData.rows.map(r => r['Member']).filter(Boolean))];
+    statsEl.innerHTML = [
+      `<span class="cal-detail-stat-chip">📸 <strong>${dayData.qty}</strong> cheki</span>`,
+      `<span class="cal-detail-stat-chip">👤 <strong>${uniqueMembers.length}</strong> member${uniqueMembers.length !== 1 ? 's' : ''}</span>`,
+      dayData.price > 0 ? `<span class="cal-detail-stat-chip">฿ <strong>${dayData.price.toLocaleString()}</strong></span>` : ''
+    ].join('');
+
+    let cards = dayData.rows.map((row, idx) => {
+      let imgUrl   = calGetRowImageUrl(row);
+      let member   = row['Member'] || 'Unknown';
+      let color    = row['Color']  || '';
+      let qty      = Number(row['Quantity']) || Number(row['Qty']) || 1;
+      let colorHex = (COLOR_MAP[color] && COLOR_MAP[color].primary) || '';
+
+      let colorDot = colorHex ? `<div class="cal-cheki-card-color-dot" style="background:${calEscHtml(colorHex)};" title="${calEscHtml(color)}"></div>` : '';
+      let qtyPill  = qty > 1 ? `<div class="cal-cheki-qty-pill">×${qty}</div>` : '';
+
+      let imgContent;
+      if (imgUrl) {
+        imgContent =
+          `<img src="${calEscHtml(imgUrl)}" alt="${calEscHtml(member)}" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` +
+          `<div class="cal-cheki-no-img" style="display:none;">📷<span>No image</span></div>`;
+      } else {
+        imgContent = `<div class="cal-cheki-no-img">📷<span>No image</span></div>`;
+      }
+
+      return `<div class="cal-cheki-card" data-idx="${idx}">
+        ${imgContent}
+        ${colorDot}
+        ${qtyPill}
+        <div class="cal-cheki-card-label">${calEscHtml(member)}</div>
+      </div>`;
+    }).join('');
+
+    gallery.innerHTML = cards;
+    panel.style.display = 'block';
+    setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+  }
+
+  /** Feature 3: Lightbox Modal with Next / Prev image navigation */
+  function calOpenImgModal(idx) {
+    let row = CAL_GALLERY_ROWS[idx];
+    if (!row) return;
+
+    CAL_MODAL_CURRENT_IDX = idx;
+
+    let modal  = document.getElementById('cal_img_modal');
+    let imgEl  = document.getElementById('cal_img_modal_img');
+    let infoEl = document.getElementById('cal_img_modal_info');
+    if (!modal) return;
+
+    let imgUrl  = calGetRowImageUrl(row);
+    let member  = row['Member'] || 'Unknown';
+    let event   = row['Event']  || '';
+    let qty     = Number(row['Quantity']) || Number(row['Qty']) || 1;
+
+    if (imgUrl) {
+      imgEl.src = imgUrl;
+      imgEl.style.display = 'block';
+    } else {
+      imgEl.src = '';
+      imgEl.style.display = 'none';
+    }
+
+    let dateStr = row['Date'] || '';
+    if (dateStr.includes(' ')) dateStr = dateStr.split(' ')[0];
+    let parts = dateStr.split('-');
+    let displayDate = parts.length === 3
+      ? CAL_MONTH_NAMES[parseInt(parts[1],10)-1] + ' ' + parseInt(parts[2],10) + ', ' + parts[0]
+      : dateStr;
+
+    infoEl.innerHTML =
+      `<strong>${calEscHtml(member)}</strong>` +
+      (event ? ` &mdash; ${calEscHtml(event)}` : '') +
+      `<br><span style="color:#71717a;font-size:11px;">${displayDate}${qty > 1 ? ' &nbsp;·&nbsp; ×' + qty : ''} &nbsp;(${idx + 1}/${CAL_GALLERY_ROWS.length})</span>`;
+
+    // Update modal arrow button states
+    let prevBtn = document.getElementById('cal_modal_prev_btn');
+    let nextBtn = document.getElementById('cal_modal_next_btn');
+    if (prevBtn) {
+      if (idx > 0) prevBtn.classList.remove('disabled');
+      else prevBtn.classList.add('disabled');
+    }
+    if (nextBtn) {
+      if (idx < CAL_GALLERY_ROWS.length - 1) nextBtn.classList.remove('disabled');
+      else nextBtn.classList.add('disabled');
+    }
+
+    modal.classList.add('open');
+    document.addEventListener('keydown', calModalKeyHandler);
+  }
+
+  function calNavigateModal(direction) {
+    let newIdx = CAL_MODAL_CURRENT_IDX + direction;
+    if (newIdx >= 0 && newIdx < CAL_GALLERY_ROWS.length) {
+      calOpenImgModal(newIdx);
+    }
+  }
+
+  function closeCalImgModal() {
+    let modal = document.getElementById('cal_img_modal');
+    if (modal) modal.classList.remove('open');
+    document.removeEventListener('keydown', calModalKeyHandler);
+  }
+
+  function calModalKeyHandler(e) {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      calNavigateModal(-1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      calNavigateModal(1);
+    } else if (e.key === 'Escape') {
+      closeCalImgModal();
+    }
+  }
+
+  /** Feature 4: Raw Data [ ⌕ ] link opens lightbox modal */
+  function openRawDataImageModal(filteredIdx) {
+    let source = FILTERED_DATA && FILTERED_DATA.length > 0 ? FILTERED_DATA : ALL_DATA;
+    let targetRow = source[filteredIdx];
+    if (!targetRow) return;
+
+    // Collect all rows from filtered data that have an actual IMG column URL
+    let rowsWithImages = source.filter(r => !!calExtractImageUrl(r['IMG'] || r['img']));
+    if (rowsWithImages.length === 0) rowsWithImages = [targetRow];
+
+    CAL_GALLERY_ROWS = rowsWithImages;
+    let matchedIdx = rowsWithImages.indexOf(targetRow);
+    if (matchedIdx === -1) matchedIdx = 0;
+
+    calOpenImgModal(matchedIdx);
   }
 </script>

@@ -53,6 +53,7 @@
 
   <div class="tab-container">
     <button class="tab-button active" onclick="switchTab(event, 'home_view_tab')">Home</button>
+    <button class="tab-button" onclick="switchTab(event, 'calendar_view_tab')">📅 Calendar</button>
     <button class="tab-button" onclick="switchTab(event, 'raw_data_tab')">Raw Data</button>
     <button class="tab-button" onclick="switchTab(event, 'analytics_tab')">Analytics</button>
     <button class="tab-button" onclick="switchTab(event, 'events_view_tab')">Events</button>
@@ -541,6 +542,63 @@
           </div>
         </form>
       </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- CALENDAR VIEW TAB                                            -->
+  <!-- ============================================================ -->
+  <div id="calendar_view_tab" class="tab-content">
+    <div class="cal-wrapper">
+
+      <!-- Month Navigation Header -->
+      <div class="cal-header">
+        <button class="cal-nav-btn" id="cal_prev_btn" onclick="calNavigate(-1)">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <div class="cal-month-label" id="cal_month_label">Loading...</div>
+        <button class="cal-nav-btn" id="cal_next_btn" onclick="calNavigate(1)">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </button>
+      </div>
+
+      <!-- Summary strip: total qty this month -->
+      <div class="cal-month-summary" id="cal_month_summary"></div>
+
+      <!-- Weekday Headers -->
+      <div class="cal-grid">
+        <div class="cal-dow-label">Mon</div>
+        <div class="cal-dow-label">Tue</div>
+        <div class="cal-dow-label">Wed</div>
+        <div class="cal-dow-label">Thu</div>
+        <div class="cal-dow-label">Fri</div>
+        <div class="cal-dow-label">Sat</div>
+        <div class="cal-dow-label">Sun</div>
+      </div>
+
+      <!-- Calendar Day Grid -->
+      <div class="cal-grid" id="cal_day_grid"></div>
+
+      <!-- Day Detail Panel -->
+      <div class="cal-detail-panel" id="cal_detail_panel" style="display:none;">
+        <div class="cal-detail-header">
+          <div class="cal-detail-date" id="cal_detail_date"></div>
+          <div class="cal-detail-stats" id="cal_detail_stats"></div>
+        </div>
+        <div class="cal-cheki-gallery" id="cal_cheki_gallery"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Cheki Calendar Image Modal -->
+  <div id="cal_img_modal" class="cal-img-modal-overlay" onclick="closeCalImgModal()">
+    <button class="cal-img-modal-close" onclick="closeCalImgModal()">×</button>
+    <button class="cal-img-modal-nav cal-img-modal-prev" id="cal_modal_prev_btn" onclick="event.stopPropagation(); calNavigateModal(-1)">&#10094;</button>
+    <button class="cal-img-modal-nav cal-img-modal-next" id="cal_modal_next_btn" onclick="event.stopPropagation(); calNavigateModal(1)">&#10095;</button>
+    <div class="cal-img-modal-content" onclick="event.stopPropagation()">
+      <img id="cal_img_modal_img" src="" alt="Cheki" referrerpolicy="no-referrer">
+      <div class="cal-img-modal-info" id="cal_img_modal_info"></div>
     </div>
   </div>
 

@@ -561,3 +561,40 @@ function writeAdminLog(actionType, actionDetail) {
     return e.message;
   }
 }
+
+/**
+ * Utility: Batch convert temporary Google Photos URLs (photos.fife.usercontent.google.com)
+ * to permanent direct URLs (lh3.googleusercontent.com) across the fact_cheki_transaction sheet.
+ * Can be executed manually from the Apps Script Editor or run from the browser console.
+ */
+function migrateGooglePhotoUrls() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("fact_cheki_transaction") || ss.getActiveSheet();
+  var range = sheet.getDataRange();
+  var formulas = range.getFormulas();
+  var values = range.getValues();
+  
+  var updatedCount = 0;
+  var oldDomain = "photos.fife.usercontent.google.com";
+  var newDomain = "lh3.googleusercontent.com";
+  
+  for (var r = 0; r < formulas.length; r++) {
+    for (var c = 0; c < formulas[r].length; c++) {
+      var cellFormula = formulas[r][c];
+      var cellValue = String(values[r][c]);
+      
+      if (cellFormula && cellFormula.indexOf(oldDomain) !== -1) {
+        var newFormula = cellFormula.replace(new RegExp(oldDomain, 'g'), newDomain);
+        sheet.getRange(r + 1, c + 1).setFormula(newFormula);
+        updatedCount++;
+      } else if (cellValue && cellValue.indexOf(oldDomain) !== -1) {
+        var newValue = cellValue.replace(new RegExp(oldDomain, 'g'), newDomain);
+        sheet.getRange(r + 1, c + 1).setValue(newValue);
+        updatedCount++;
+      }
+    }
+  }
+  
+  Logger.log("Migrated " + updatedCount + " URLs from " + oldDomain + " to " + newDomain);
+  return "Successfully migrated " + updatedCount + " URL(s).";
+}
