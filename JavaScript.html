@@ -2802,10 +2802,31 @@
     let events  = item.eventNames.join(', ') || '';
 
     if (imgUrl) {
-      imgEl.src = imgUrl;
+      // Instantly hide previous image so it doesn't linger while new image loads
+      imgEl.style.opacity = '0';
       imgEl.style.display = 'block';
+      
+      // Clean up previous event handlers
+      imgEl.onload = null;
+      imgEl.onerror = null;
+
+      let tempImg = new Image();
+      tempImg.referrerPolicy = 'no-referrer';
+      tempImg.onload = function() {
+        if (CAL_MODAL_CURRENT_IDX === idx) {
+          imgEl.src = imgUrl;
+          imgEl.style.opacity = '1';
+        }
+      };
+      tempImg.onerror = function() {
+        if (CAL_MODAL_CURRENT_IDX === idx) {
+          imgEl.style.display = 'none';
+        }
+      };
+      tempImg.src = imgUrl;
     } else {
       imgEl.src = '';
+      imgEl.style.opacity = '0';
       imgEl.style.display = 'none';
     }
 
